@@ -1,10 +1,6 @@
-import Navbar from "./components/layout/Navbar";
-import { ThemeProvider } from "./context/theme/ThemeProvider";
+import { router } from "@/router";
+import { RouterProvider } from "react-router";
 
 export function App() {
-  return (
-    <ThemeProvider>
-      <Navbar />
-    </ThemeProvider>
-  );
+  return <RouterProvider router={router} />;
 }

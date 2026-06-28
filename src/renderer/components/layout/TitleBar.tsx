@@ -1,12 +1,12 @@
 import { useTheme } from "@/renderer/context/theme/useTheme";
 import { FileIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 
-function Navbar() {
+function TitleBar() {
   const { isDark, toggleTheme } = useTheme();
 
   return (
     <header
-      className="bg-card border-b border-border h-10 p-2"
+      className="bg-card border-b border-border sticky top-0 z-50 h-10 p-2"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div className="relative flex items-center justify-between mr-32">
@@ -44,4 +44,4 @@ function Navbar() {
   );
 }
 
-export default Navbar;
+export default TitleBar;
