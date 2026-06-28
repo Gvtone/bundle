@@ -1,6 +1,9 @@
-import { FileIcon, MoonIcon } from "@phosphor-icons/react";
+import { useTheme } from "@/renderer/context/theme/useTheme";
+import { FileIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 
 function Navbar() {
+  const { isDark, toggleTheme } = useTheme();
+
   return (
     <header
       className="bg-card border-b border-border h-10 p-2"
@@ -14,8 +17,12 @@ function Navbar() {
           <span className="font-bold text-foreground text-sm">Bundle</span>
         </div>
 
-        <button className="flex justify-center items-center rounded-md bg-card-muted border border-border size-6">
-          <MoonIcon size={12} />
+        <button
+          onClick={toggleTheme}
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+          className="flex justify-center items-center rounded-md bg-card-muted border border-border size-6 cursor-pointer"
+        >
+          {isDark ? <SunIcon size={12} /> : <MoonIcon size={12} />}
         </button>
 
         <div className="absolute flex justify-center items-center gap-2 left-1/2 -translate-x-1/2 text-xs text-subtle-foreground max-w-3/5">

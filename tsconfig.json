@@ -4,9 +4,9 @@
     "module": "esnext",
     "paths": {
       "@/*": ["./src/*"],
-      "@main": ["./src/main/*"],
-      "@preload": ["./src/main/*"],
-      "@renderer": ["./src/main/*"]
+      "@main/*": ["./src/main/*"],
+      "@preload/*": ["./src/preload/*"],
+      "@renderer/*": ["./src/renderer/*"]
     },
     "outDir": "dist",
     "moduleResolution": "bundler",
