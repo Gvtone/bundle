@@ -1,10 +1,199 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* --- Surfaces --- */
+  --background: #EDE9E1;        /* app canvas */
+  --background-sunken: #E4DFD4; /* doc tray / inset areas */
+  --card: #FBFAF6;             /* sidebars, panels, popovers */
+  --card-muted: #F1EDE4;       /* inputs, segmented controls */
+  --popover: #FBFAF6;
+  --popover-foreground: #34302A;
+
+  /* --- Text --- */
+  --foreground: #34302A;       /* primary text */
+  --muted-foreground: #6E675D; /* secondary text */
+  --subtle-foreground: #A69E91;/* tertiary / placeholder */
+
+  /* --- Borders --- */
+  --border: #DBD5C8;           /* default hairline */
+  --border-muted: #E8E3D8;     /* lighter divider */
+  --ring: #6E7D63;             /* focus ring (= primary) */
+
+  /* --- Primary (sage) --- */
+  --primary: #6E7D63;
+  --primary-hover: #5C6A52;
+  --primary-foreground: #FFFFFF;
+  --primary-soft: #E2E7DA;       /* chip / soft fill bg */
+  --primary-soft-foreground: #4C5942;
+
+  /* --- Document "paper" (light in both modes by default) --- */
+  --paper: #FFFFFF;
+  --paper-foreground: #2B2722;
+  --paper-muted-foreground: #7C756A;
+  --paper-border: #E7E2D7;
+
+  /* --- Status: error (muted clay) --- */
+  --destructive: #A65A4E;
+  --destructive-hover: #92493E;
+  --destructive-foreground: #FFFFFF;
+  --destructive-soft: #F0DFDB;
+  --destructive-soft-foreground: #7C3D33;
+
+  /* --- Status: warning (muted ochre) --- */
+  --warning: #B08534;
+  --warning-hover: #98712A;
+  --warning-foreground: #FFFFFF;
+  --warning-soft: #F2E6CE;
+  --warning-soft-foreground: #76561D;
+
+  /* --- Status: success (deeper sage-green) --- */
+  --success: #5E8A5C;
+  --success-hover: #4E7649;
+  --success-foreground: #FFFFFF;
+  --success-soft: #DDEAD9;
+  --success-soft-foreground: #3C5C3A;
+
+  /* --- Status: info (muted slate blue) --- */
+  --info: #62788C;
+  --info-hover: #52677A;
+  --info-foreground: #FFFFFF;
+  --info-soft: #DDE5EC;
+  --info-soft-foreground: #42525F;
+
+  --radius: 11px;
+}
+
+.dark {
+  /* --- Surfaces --- */
+  --background: #1B1916;
+  --background-sunken: #131210;
+  --card: #242120;
+  --card-muted: #2C2926;
+  --popover: #242120;
+  --popover-foreground: #ECE6DA;
+
+  /* --- Text --- */
+  --foreground: #ECE6DA;
+  --muted-foreground: #ABA293;
+  --subtle-foreground: #766E62;
+
+  /* --- Borders --- */
+  --border: #34302A;
+  --border-muted: #3E3933;
+  --ring: #9DAC8C;
+
+  /* --- Primary (sage, lifted for contrast) --- */
+  --primary: #9DAC8C;
+  --primary-hover: #AEBD9C;
+  --primary-foreground: #1B1916;
+  --primary-soft: #333B2C;
+  --primary-soft-foreground: #C7D2B6;
+
+  /* --- Document "paper" (dark variant) --- */
+  --paper: #22201C;
+  --paper-foreground: #EAE4D8;
+  --paper-muted-foreground: #9A9184;
+  --paper-border: #34302A;
+
+  /* --- Status: error --- */
+  --destructive: #C88B7E;
+  --destructive-hover: #D49C90;
+  --destructive-foreground: #1B1916;
+  --destructive-soft: #3A2925;
+  --destructive-soft-foreground: #E5C3BA;
+
+  /* --- Status: warning --- */
+  --warning: #CFAA66;
+  --warning-hover: #DBB877;
+  --warning-foreground: #1B1916;
+  --warning-soft: #3A301C;
+  --warning-soft-foreground: #ECD4A0;
+
+  /* --- Status: success --- */
+  --success: #93BE8E;
+  --success-hover: #A3CA9E;
+  --success-foreground: #1B1916;
+  --success-soft: #28331F;
+  --success-soft-foreground: #BFD9B8;
+
+  /* --- Status: info --- */
+  --info: #92A6BA;
+  --info-hover: #A3B5C7;
+  --info-foreground: #1B1916;
+  --info-soft: #2A333D;
+  --info-soft-foreground: #BDCDDB;
+}
+
+@theme inline {
+  /* --- Surfaces --- */
+  --color-background: var(--background);
+  --color-background-sunken: var(--backgroudn-sunken);  
+  --color-card: var(--card);
+  --color-card-muted: var(--card-muted);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* --- Text --- */
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+
+  /* --- Borders --- */
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+  --color-ring: var(--ring);
+
+  /* --- Primary (sage) --- */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+
+  /* --- Document "paper" (light in both modes by default) --- */
+  --color-paper: var(--paper);
+  --color-paper-foreground: var(--paper-foreground);
+  --color-paper-muted-foreground: var(--paper-muted-foreground);
+  --color-paper-border: var(--paper-border);
+
+  /* --- Status: error (muted clay) --- */
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+
+  /* --- Status: warning (muted ochre) --- */
+  --color-warning: var(--warning);
+  --color-warning-hover: var(--warning-hover);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+
+  /* --- Status: success (deeper sage-green) --- */
+  --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+
+  /* --- Status: info (muted slate blue) --- */
+  --color-info: var(--info);
+  --color-info-hover: var(--info-hover);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-soft-foreground: var(--info-soft-foreground);
+
+  --radius: 11px;
+}
+
 @layer base {
-  /* body {
+  body {
     @apply bg-background text-foreground;
     font-family: "Nunito", sans-serif;
-  } */
+  }
 
   html {
     font-size: var(--font-size);
@@ -33,7 +222,7 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
-    /* font-family: "Nunito", sans-serif; */
+    font-family: "Nunito", sans-serif;
   }
 
   label {
@@ -46,13 +235,13 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
-    /* font-family: "Nunito", sans-serif; */
+    font-family: "Nunito", sans-serif;
   }
 
   input {
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
-    /* font-family: "Nunito", sans-serif; */
+    font-family: "Nunito", sans-serif;
   }
 }
