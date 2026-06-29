@@ -6,11 +6,11 @@ function RootLayout() {
   return (
     <ThemeProvider>
       <div className="min-h-screen flex flex-col bg-background">
-        <main className="flex-1">
+        <div className="flex-1">
           <Suspense>
             <Outlet />
           </Suspense>
-        </main>
+        </div>
       </div>
     </ThemeProvider>
   );

@@ -1,11 +1,15 @@
+import MainHeader from "./MainHeader";
 import Sidebar from "./Sidebar";
 
 function DocumentLayout({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="flex w-full h-full">
+    <main className="flex w-full h-full">
       <Sidebar />
-      {children}
-    </div>
+      <div className="flex flex-col w-full h-full">
+        <MainHeader />
+        {children}
+      </div>
+    </main>
   );
 }
 

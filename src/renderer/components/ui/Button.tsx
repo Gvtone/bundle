@@ -10,7 +10,7 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground",
           "hover:bg-primary-hover"
         ],
-        secondary: ["bg-card-muted text-foreground"],
+        secondary: ["bg-card text-foreground", "border border-border"],
         tertiary: ["bg-transparent"],
         muted: ["bg-card-muted border border-border"]
       },
