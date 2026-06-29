@@ -10,13 +10,15 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground",
           "hover:bg-primary-hover"
         ],
-        secondary: ["bg-card-muted text-foreground"]
+        secondary: ["bg-card-muted text-foreground"],
+        tertiary: ["bg-transparent"],
+        muted: ["bg-card-muted border border-border"]
       },
       size: {
         sm: "px-4 py-1 text-sm",
         md: "px-5 py-2.5 text-sm",
         lg: "px-6 py-3 text-base",
-        icon: "size-9"
+        icon: "size-6"
       },
       contentPosition: {
         start: "justify-start",
@@ -26,6 +28,9 @@ const buttonVariants = cva(
       },
       fullWidth: {
         true: "w-full"
+      },
+      active: {
+        true: "bg-primary-soft"
       }
     },
     defaultVariants: {
@@ -43,16 +48,19 @@ interface ButtonProps
 
 function Button({
   children,
+  className,
   variant,
   size,
   contentPosition,
   fullWidth,
+  active,
   ...props
 }: ButtonProps) {
   return (
     <button
       className={cn(
-        buttonVariants({ variant, size, contentPosition, fullWidth })
+        buttonVariants({ variant, size, contentPosition, active, fullWidth }),
+        className
       )}
       {...props}
     >
