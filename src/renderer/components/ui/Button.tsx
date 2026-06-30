@@ -18,7 +18,7 @@ const buttonVariants = cva(
         sm: "px-4 py-1 text-sm",
         md: "px-5 py-2.5 text-sm",
         lg: "px-6 py-3 text-base",
-        icon: "size-6"
+        icon: "size-7"
       },
       contentPosition: {
         start: "justify-start",
