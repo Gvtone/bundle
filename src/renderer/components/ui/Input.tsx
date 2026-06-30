@@ -7,7 +7,8 @@ const inputVariants = cva(
     variants: {
       variant: {
         primary: ["bg-card-muted border border-border"],
-        secondary: ["bg-card border border-border"]
+        secondary: ["bg-card border border-border"],
+        muted: ["bg-card-muted"]
       },
       scale: {
         sm: "px-4 py-1 text-sm",
