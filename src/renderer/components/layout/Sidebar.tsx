@@ -25,7 +25,7 @@ function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col bg-card shrink-0 h-full p-4 transition-all duration-200",
+        "flex flex-col bg-card border-r border-border shrink-0 h-full p-4 transition-all duration-200",
         isSidebarOpen ? "w-64" : "w-fit"
       )}
     >
@@ -64,7 +64,7 @@ function Sidebar() {
 
       {/* TODO: replace with real data */}
       {/* Files and folders */}
-      <div className="flex flex-col gap-2 mb-4">
+      <div className="flex flex-col gap-2 mb-4 overflow-y-auto">
         <h4
           className={cn(
             "text-xs text-subtle-foreground font-semibold tracking-widest",
