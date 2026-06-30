@@ -4,132 +4,137 @@
 
 :root {
   /* --- Surfaces --- */
-  --background: #EDE9E1;        /* app canvas */
-  --background-sunken: #E4DFD4; /* doc tray / inset areas */
-  --card: #FBFAF6;             /* sidebars, panels, popovers */
-  --card-muted: #F1EDE4;       /* inputs, segmented controls */
-  --popover: #FBFAF6;
-  --popover-foreground: #34302A;
+  --background: #ede9e1; /* app canvas */
+  --background-sunken: #e4dfd4; /* doc tray / inset areas */
+  --card: #fbfaf6; /* sidebars, panels, popovers */
+  --card-muted: #f1ede4; /* inputs, segmented controls */
+  --popover: #fbfaf6;
+  --popover-foreground: #34302a;
 
   /* --- Text --- */
-  --foreground: #34302A;       /* primary text */
-  --muted-foreground: #6E675D; /* secondary text */
-  --subtle-foreground: #A69E91;/* tertiary / placeholder */
+  --foreground: #34302a; /* primary text */
+  --muted-foreground: #6e675d; /* secondary text */
+  --subtle-foreground: #a69e91; /* tertiary / placeholder */
 
   /* --- Borders --- */
-  --border: #DBD5C8;           /* default hairline */
-  --border-muted: #E8E3D8;     /* lighter divider */
-  --ring: #6E7D63;             /* focus ring (= primary) */
+  --border: #dbd5c8; /* default hairline */
+  --border-muted: #e8e3d8; /* lighter divider */
+  --ring: #6e7d63; /* focus ring (= primary) */
 
   /* --- Primary (sage) --- */
-  --primary: #6E7D63;
-  --primary-hover: #5C6A52;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: #E2E7DA;       /* chip / soft fill bg */
-  --primary-soft-foreground: #4C5942;
+  --primary: #6e7d63;
+  --primary-hover: #5c6a52;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e2e7da; /* chip / soft fill bg */
+  --primary-soft-foreground: #4c5942;
 
   /* --- Document "paper" (light in both modes by default) --- */
-  --paper: #FFFFFF;
-  --paper-foreground: #2B2722;
-  --paper-muted-foreground: #7C756A;
-  --paper-border: #E7E2D7;
+  --paper: #ffffff;
+  --paper-foreground: #2b2722;
+  --paper-muted-foreground: #7c756a;
+  --paper-border: #e7e2d7;
 
   /* --- Status: error (muted clay) --- */
-  --destructive: #A65A4E;
-  --destructive-hover: #92493E;
-  --destructive-foreground: #FFFFFF;
-  --destructive-soft: #F0DFDB;
-  --destructive-soft-foreground: #7C3D33;
+  --destructive: #a65a4e;
+  --destructive-hover: #92493e;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #f0dfdb;
+  --destructive-soft-foreground: #7c3d33;
 
   /* --- Status: warning (muted ochre) --- */
-  --warning: #B08534;
-  --warning-hover: #98712A;
-  --warning-foreground: #FFFFFF;
-  --warning-soft: #F2E6CE;
-  --warning-soft-foreground: #76561D;
+  --warning: #b08534;
+  --warning-hover: #98712a;
+  --warning-foreground: #ffffff;
+  --warning-soft: #f2e6ce;
+  --warning-soft-foreground: #76561d;
 
   /* --- Status: success (deeper sage-green) --- */
-  --success: #5E8A5C;
-  --success-hover: #4E7649;
-  --success-foreground: #FFFFFF;
-  --success-soft: #DDEAD9;
-  --success-soft-foreground: #3C5C3A;
+  --success: #5e8a5c;
+  --success-hover: #4e7649;
+  --success-foreground: #ffffff;
+  --success-soft: #ddead9;
+  --success-soft-foreground: #3c5c3a;
 
   /* --- Status: info (muted slate blue) --- */
-  --info: #62788C;
-  --info-hover: #52677A;
-  --info-foreground: #FFFFFF;
-  --info-soft: #DDE5EC;
-  --info-soft-foreground: #42525F;
+  --info: #62788c;
+  --info-hover: #52677a;
+  --info-foreground: #ffffff;
+  --info-soft: #dde5ec;
+  --info-soft-foreground: #42525f;
+
+  /* --- Fonts --- */
+  --ui: "Hanken Grotesk", system-ui, sans-serif;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "Spline Sans Mono", ui-monospace, monospace;
 
   --radius: 11px;
 }
 
 .dark {
   /* --- Surfaces --- */
-  --background: #1B1916;
+  --background: #1b1916;
   --background-sunken: #131210;
   --card: #242120;
-  --card-muted: #2C2926;
+  --card-muted: #2c2926;
   --popover: #242120;
-  --popover-foreground: #ECE6DA;
+  --popover-foreground: #ece6da;
 
   /* --- Text --- */
-  --foreground: #ECE6DA;
-  --muted-foreground: #ABA293;
-  --subtle-foreground: #766E62;
+  --foreground: #ece6da;
+  --muted-foreground: #aba293;
+  --subtle-foreground: #766e62;
 
   /* --- Borders --- */
-  --border: #34302A;
-  --border-muted: #3E3933;
-  --ring: #9DAC8C;
+  --border: #34302a;
+  --border-muted: #3e3933;
+  --ring: #9dac8c;
 
   /* --- Primary (sage, lifted for contrast) --- */
-  --primary: #9DAC8C;
-  --primary-hover: #AEBD9C;
-  --primary-foreground: #1B1916;
-  --primary-soft: #333B2C;
-  --primary-soft-foreground: #C7D2B6;
+  --primary: #9dac8c;
+  --primary-hover: #aebd9c;
+  --primary-foreground: #1b1916;
+  --primary-soft: #333b2c;
+  --primary-soft-foreground: #c7d2b6;
 
   /* --- Document "paper" (dark variant) --- */
-  --paper: #22201C;
-  --paper-foreground: #EAE4D8;
-  --paper-muted-foreground: #9A9184;
-  --paper-border: #34302A;
+  --paper: #22201c;
+  --paper-foreground: #eae4d8;
+  --paper-muted-foreground: #9a9184;
+  --paper-border: #34302a;
 
   /* --- Status: error --- */
-  --destructive: #C88B7E;
-  --destructive-hover: #D49C90;
-  --destructive-foreground: #1B1916;
-  --destructive-soft: #3A2925;
-  --destructive-soft-foreground: #E5C3BA;
+  --destructive: #c88b7e;
+  --destructive-hover: #d49c90;
+  --destructive-foreground: #1b1916;
+  --destructive-soft: #3a2925;
+  --destructive-soft-foreground: #e5c3ba;
 
   /* --- Status: warning --- */
-  --warning: #CFAA66;
-  --warning-hover: #DBB877;
-  --warning-foreground: #1B1916;
-  --warning-soft: #3A301C;
-  --warning-soft-foreground: #ECD4A0;
+  --warning: #cfaa66;
+  --warning-hover: #dbb877;
+  --warning-foreground: #1b1916;
+  --warning-soft: #3a301c;
+  --warning-soft-foreground: #ecd4a0;
 
   /* --- Status: success --- */
-  --success: #93BE8E;
-  --success-hover: #A3CA9E;
-  --success-foreground: #1B1916;
-  --success-soft: #28331F;
-  --success-soft-foreground: #BFD9B8;
+  --success: #93be8e;
+  --success-hover: #a3ca9e;
+  --success-foreground: #1b1916;
+  --success-soft: #28331f;
+  --success-soft-foreground: #bfd9b8;
 
   /* --- Status: info --- */
-  --info: #92A6BA;
-  --info-hover: #A3B5C7;
-  --info-foreground: #1B1916;
-  --info-soft: #2A333D;
-  --info-soft-foreground: #BDCDDB;
+  --info: #92a6ba;
+  --info-hover: #a3b5c7;
+  --info-foreground: #1b1916;
+  --info-soft: #2a333d;
+  --info-soft-foreground: #bdcddb;
 }
 
 @theme inline {
   /* --- Surfaces --- */
   --color-background: var(--background);
-  --color-background-sunken: var(--backgroudn-sunken);  
+  --color-background-sunken: var(--backgroudn-sunken);
   --color-card: var(--card);
   --color-card-muted: var(--card-muted);
   --color-popover: var(--popover);
@@ -186,13 +191,17 @@
   --color-info-soft: var(--info-soft);
   --color-info-soft-foreground: var(--info-soft-foreground);
 
+  --font-bundle-ui: var(--ui);
+  --font-bundle-serif: var(--serif);
+  --font-bundle-mono: var(--mono);
+
   --radius: 11px;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground;
-    font-family: "Nunito", sans-serif;
+    font-family: var(--font-bundle-ui);
   }
 
   html {
@@ -222,7 +231,6 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
-    font-family: "Nunito", sans-serif;
   }
 
   label {
@@ -235,13 +243,11 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
-    font-family: "Nunito", sans-serif;
   }
 
   input {
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
-    font-family: "Nunito", sans-serif;
   }
 }

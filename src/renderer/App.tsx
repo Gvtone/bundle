@@ -1,12 +1,6 @@
-import { useState } from "react";
+import { router } from "@/router";
+import { RouterProvider } from "react-router";
 
 export function App() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <div>
-      <h1>Hello from React</h1>
-      <button onClick={() => setCount(count + 1)}>Clicked {count} times</button>
-    </div>
-  );
+  return <RouterProvider router={router} />;
 }
