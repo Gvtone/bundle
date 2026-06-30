@@ -1,6 +1,12 @@
+import { useState } from "react";
 import Button from "../ui/Button";
+import LinkButton from "../ui/LinkButton";
+import { useParams } from "react-router";
 
 function MainHeader() {
+  const [currentPage, setCurrentPage] = useState("edit");
+  const { templateId } = useParams();
+
   return (
     <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2">
       {/* Template Info */}
@@ -23,12 +29,22 @@ function MainHeader() {
 
       <div className="absolute flex justify-center items-center top-0 bottom-0 left-0 right-0">
         <div className="bg-card-muted border border-border p-1 rounded-lg">
-          <Button variant="secondary" size="sm">
+          <LinkButton
+            to={`/templates/${templateId}/edit`}
+            variant={currentPage === "edit" ? "secondary" : "tertiary"}
+            size="sm"
+            onClick={() => setCurrentPage("edit")}
+          >
             Edit template
-          </Button>
-          <Button variant="tertiary" size="sm">
+          </LinkButton>
+          <LinkButton
+            to={`/templates/${templateId}/fill`}
+            variant={currentPage === "fill" ? "secondary" : "tertiary"}
+            size="sm"
+            onClick={() => setCurrentPage("fill")}
+          >
             Fill & preview
-          </Button>
+          </LinkButton>
         </div>
       </div>
     </div>

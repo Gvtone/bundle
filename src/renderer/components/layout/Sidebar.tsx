@@ -8,6 +8,7 @@ import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useEffect, useState } from "react";
 import { cn } from "@/renderer/utils/utils";
+import LinkButton from "../ui/LinkButton";
 
 function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -74,12 +75,12 @@ function Sidebar() {
           INTERNAL
         </h4>
 
-        <a
-          href="#"
-          className={cn(
-            "flex flex-col justify-center items-center bg-primary-soft rounded-lg",
-            !isSidebarOpen ? "size-10" : "px-5 py-2.5"
-          )}
+        <LinkButton
+          to="templates/1/edit"
+          variant="tertiary"
+          fullWidth
+          className={!isSidebarOpen ? "size-10" : "px-5 py-2.5"}
+          active
         >
           {isSidebarOpen ? (
             <div className="w-full">
@@ -91,7 +92,7 @@ function Sidebar() {
           ) : (
             <p className="text-xs font-semibold">M</p>
           )}
-        </a>
+        </LinkButton>
       </div>
     </aside>
   );

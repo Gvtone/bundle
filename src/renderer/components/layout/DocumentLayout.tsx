@@ -1,14 +1,11 @@
+import { Outlet } from "react-router";
 import MainHeader from "./MainHeader";
-import Sidebar from "./Sidebar";
 
-function DocumentLayout({ children }: { children?: React.ReactNode }) {
+function DocumentLayout() {
   return (
-    <main className="flex w-full h-full">
-      <Sidebar />
-      <div className="flex flex-col w-full h-full">
-        <MainHeader />
-        {children}
-      </div>
+    <main className="flex flex-col w-full h-full">
+      <MainHeader />
+      <Outlet />
     </main>
   );
 }
