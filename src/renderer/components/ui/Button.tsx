@@ -12,9 +12,10 @@ const buttonVariants = cva(
         ],
         secondary: ["bg-card text-foreground", "border border-border"],
         tertiary: ["bg-transparent", "hover:bg-border"],
-        muted: ["bg-card-muted border border-border"]
+        muted: ["bg-card-muted text-muted-foreground", "border border-border"]
       },
       size: {
+        xs: "px-2 py-0.5 text-xs rounded-md",
         sm: "px-4 py-1 text-sm",
         md: "px-5 py-2.5 text-sm",
         lg: "px-6 py-3 text-base",
