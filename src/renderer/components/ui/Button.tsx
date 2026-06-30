@@ -11,7 +11,7 @@ const buttonVariants = cva(
           "hover:bg-primary-hover"
         ],
         secondary: ["bg-card text-foreground", "border border-border"],
-        tertiary: ["bg-transparent"],
+        tertiary: ["bg-transparent", "hover:bg-border"],
         muted: ["bg-card-muted border border-border"]
       },
       size: {
