@@ -93,3 +93,8 @@ out/
 
 # VS Code
 .vscode/
+
+# Claude
+.claude/
+CLAUDE.md
+HANDOFF.md

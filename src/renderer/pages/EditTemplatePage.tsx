@@ -20,7 +20,9 @@ import { FontSize } from "@/renderer/lib/font-size-extension";
 import PlaceholderCard from "../components/edit-template/PlaceholderCard";
 import Button from "../components/ui/Button";
 import { useTemplate } from "@/renderer/context/TemplateContext";
-import { useState } from "react";
+import { useTemplates } from "@/renderer/context/TemplatesContext";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 // Page size definitions — width/height in pixels at 96dpi (standard screen)
 const PAGE_SIZES = {
@@ -62,7 +64,8 @@ const FONT_SIZE_OPTIONS = [
 ];
 
 function EditTemplatePage() {
-  const { content, loading } = useTemplate();
+  const { meta, content, loading, save, setSaveHandler } = useTemplate();
+  const { refetch } = useTemplates();
   const [pageSize, setPageSize] = useState<PageSizeKey>("letter");
   const [margins, setMargins] = useState(96);
   const [customSize, setCustomSize] = useState({ width: 816, height: 1056 });
@@ -84,7 +87,7 @@ function EditTemplatePage() {
       content: [{ type: "paragraph" }]
     },
     immediatelyRender: false
-  });
+  }, [content]);
 
   const editorState = useEditorState({
     editor,
@@ -103,6 +106,35 @@ function EditTemplatePage() {
       currentSize: ctx.editor?.getAttributes("textStyle")["fontSize"] ?? ""
     })
   });
+
+  useEffect(() => {
+    if (!editor || !meta) return;
+
+    setSaveHandler(async () => {
+      try {
+        await window.bundle.saveTemplate(meta, editor.getJSON());
+        refetch();
+        toast.success("Template saved");
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to save template"
+        );
+      }
+    });
+
+    return () => setSaveHandler(null);
+  }, [editor, meta, refetch, setSaveHandler]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        save?.();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [save]);
 
   function handleFontChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const value = e.target.value;

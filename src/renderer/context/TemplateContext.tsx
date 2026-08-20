@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router";
 import type { Template } from "@/shared/types";
 
@@ -7,6 +7,8 @@ interface TemplateContextValue {
   content: unknown;
   loading: boolean;
   error: Error | null;
+  save: (() => Promise<void>) | null;
+  setSaveHandler: (fn: (() => Promise<void>) | null) => void;
 }
 
 const TemplateContext = createContext<TemplateContextValue | undefined>(
@@ -19,6 +21,11 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
   const [content, setContent] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [save, setSave] = useState<(() => Promise<void>) | null>(null);
+  const setSaveHandler = useCallback(
+    (fn: (() => Promise<void>) | null) => setSave(() => fn),
+    []
+  );
 
   useEffect(() => {
     if (!templateId) return;
@@ -35,7 +42,9 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
   }, [templateId]);
 
   return (
-    <TemplateContext.Provider value={{ meta, content, loading, error }}>
+    <TemplateContext.Provider
+      value={{ meta, content, loading, error, save, setSaveHandler }}
+    >
       {children}
     </TemplateContext.Provider>
   );

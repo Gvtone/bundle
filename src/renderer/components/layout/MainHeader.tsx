@@ -7,7 +7,7 @@ import { useTemplate } from "@/renderer/context/TemplateContext";
 function MainHeader() {
   const { templateId } = useParams();
   const { pathname } = useLocation();
-  const { meta } = useTemplate();
+  const { meta, save } = useTemplate();
   const isEdit = pathname.endsWith("/edit");
 
   return (
@@ -28,7 +28,12 @@ function MainHeader() {
               <span className="leading-0 max-md:hidden">New placeholder</span>
             </Button>
 
-            <Button size="sm" variant="secondary">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => save?.()}
+              disabled={!save}
+            >
               Save
             </Button>
           </>
