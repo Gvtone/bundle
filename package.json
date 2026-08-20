@@ -1,6 +1,6 @@
 {
-  "name": "document-filler",
-  "productName": "document-filler",
+  "name": "bundle",
+  "productName": "Bundle",
   "version": "1.0.0",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",

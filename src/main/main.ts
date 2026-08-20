@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu } from "electron";
 import path from "node:path";
 import started from "electron-squirrel-startup";
 import { getWindowState, saveWindowState } from "./pref-store";
+import { registerIpcHandlers } from "./ipc-handlers";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -48,6 +49,7 @@ async function createWindow() {
 // Some APIs can only be used after this event occurs.
 app.on("ready", () => {
   Menu.setApplicationMenu(null);
+  registerIpcHandlers();
   createWindow().catch(console.error);
 });
 

@@ -1,24 +1,27 @@
-import { useState } from "react";
 import Button from "../ui/Button";
 import LinkButton from "../ui/LinkButton";
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { ExportIcon, PrinterIcon } from "@phosphor-icons/react";
+import { useTemplate } from "@/renderer/context/TemplateContext";
 
 function MainHeader() {
-  const [currentPage, setCurrentPage] = useState("edit");
   const { templateId } = useParams();
+  const { pathname } = useLocation();
+  const { meta } = useTemplate();
+  const isEdit = pathname.endsWith("/edit");
 
   return (
     <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2">
-      {/* Template Info */}
       <div className="flex flex-col z-10">
-        <h2 className="text-sm font-semibold">Memorandum</h2>
-        <p className="text-xs text-subtle-foreground">Internal · 10 fields</p>
+        <h2 className="text-sm font-semibold">{meta?.name ?? "Loading..."}</h2>
+        <p className="text-xs text-subtle-foreground">
+          {meta ? `${meta.category} · ${meta.placeholders.length} fields` : ""}
+        </p>
       </div>
 
       {/* Action Buttons */}
       <div className="flex gap-2 z-10">
-        {currentPage === "edit" ? (
+        {isEdit ? (
           <>
             <Button size="sm" className="text-xs items-center">
               <span className="font-bundle-mono">{"{·}"}</span>
@@ -48,17 +51,15 @@ function MainHeader() {
         <div className="bg-card-muted border border-border p-1 rounded-lg">
           <LinkButton
             to={`/templates/${templateId}/edit`}
-            variant={currentPage === "edit" ? "secondary" : "tertiary"}
+            variant="tertiary"
             size="sm"
-            onClick={() => setCurrentPage("edit")}
           >
             Edit template
           </LinkButton>
           <LinkButton
             to={`/templates/${templateId}/fill`}
-            variant={currentPage === "fill" ? "secondary" : "tertiary"}
+            variant="tertiary"
             size="sm"
-            onClick={() => setCurrentPage("fill")}
           >
             Fill & preview
           </LinkButton>

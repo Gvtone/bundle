@@ -1,6 +1,6 @@
 import { cn } from "@/renderer/utils/utils";
 import { cva, VariantProps } from "class-variance-authority";
-import { LinkProps, NavLink, NavLinkProps } from "react-router";
+import { NavLink, NavLinkProps } from "react-router";
 
 const linkButtonVariants = cva(
   "w-fit inline-flex items-center gap-2 rounded-lg font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed whitespace-nowrap",
@@ -59,16 +59,18 @@ function LinkButton({
   return (
     <NavLink
       to={to}
-      className={cn(
-        linkButtonVariants({
-          variant,
-          size,
-          contentPosition,
-          active,
-          fullWidth
-        }),
-        className
-      )}
+      className={({ isActive }) =>
+        cn(
+          linkButtonVariants({
+            variant,
+            size,
+            contentPosition,
+            fullWidth,
+            active: active ?? isActive
+          }),
+          className
+        )
+      }
       {...props}
     >
       {children}
