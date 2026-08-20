@@ -2,22 +2,35 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
 import type { Template } from "../shared/types";
+import { randomUUID } from "node:crypto";
 
 function templatesDir() {
   return path.join(app.getPath("userData"), "templates");
 }
 
 export async function saveTemplate(template: Template, content: unknown) {
-  const dir = path.join(templatesDir(), template.id);
+  const id = template.id || randomUUID();
+  const now = new Date().toISOString();
+
+  const saved: Template = {
+    ...template,
+    id,
+    createdAt: template.createdAt || now,
+    updatedAt: now
+  };
+
+  const dir = path.join(templatesDir(), id);
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
     path.join(dir, "meta.json"),
-    JSON.stringify(template, null, 2)
+    JSON.stringify(saved, null, 2)
   );
   await fs.writeFile(
     path.join(dir, "content.json"),
     JSON.stringify(content, null, 2)
   );
+
+  return saved;
 }
 
 export async function listTemplates(): Promise<Template[]> {

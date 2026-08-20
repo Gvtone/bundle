@@ -23,7 +23,10 @@ export interface Template {
 }
 
 export interface BundleApi {
-  saveTemplate: (template: Template, content: unknown) => Promise<void>;
+  saveTemplate: (
+    template: Partial<Template>,
+    content: unknown
+  ) => Promise<Template>;
   listTemplates: () => Promise<Template[]>;
   loadTemplate: (id: string) => Promise<{ meta: Template; content: unknown }>;
   deleteTemplate: (id: string) => Promise<void>;

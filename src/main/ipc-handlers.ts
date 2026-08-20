@@ -8,7 +8,7 @@ import {
 
 export function registerIpcHandlers() {
   ipcMain.handle("template:save", async (_event, template, content) => {
-    await saveTemplate(template, content);
+    return saveTemplate(template, content);
   });
 
   ipcMain.handle("template:list", async () => {

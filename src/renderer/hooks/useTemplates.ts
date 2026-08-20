@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Template } from "../../shared/types";
 
 export function useTemplates() {
@@ -6,7 +6,8 @@ export function useTemplates() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetch = useCallback(() => {
+    setLoading(true);
     window.bundle
       .listTemplates()
       .then(setTemplates)
@@ -14,5 +15,9 @@ export function useTemplates() {
       .finally(() => setLoading(false));
   }, []);
 
-  return { templates, loading, error };
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { templates, loading, error, refetch: fetch };
 }

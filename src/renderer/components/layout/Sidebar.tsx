@@ -9,15 +9,17 @@ import Input from "../ui/Input";
 import { useEffect, useState } from "react";
 import { cn } from "@/renderer/utils/utils";
 import LinkButton from "../ui/LinkButton";
-import { useTemplates } from "@/renderer/hooks/useTemplates";
+import { useTemplates } from "@/renderer/context/TemplatesContext";
 import { Template } from "@/shared/types";
 import { relativeTime } from "@/renderer/utils/relativeTime";
+import { useCreateTemplate } from "@/renderer/hooks/useCreateTemplate";
 
 function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [templateSearch, setTemplateSearch] = useState("");
   const [debouncedTemplateSearch, setDebouncedTemplateSearch] = useState("");
   const { templates } = useTemplates();
+  const { createTemplate } = useCreateTemplate();
 
   useEffect(() => {
     const timer = setTimeout(
@@ -68,7 +70,11 @@ function Sidebar() {
         </h3>
 
         {/* New template button */}
-        <Button fullWidth className={!isSidebarOpen ? "size-10 p-0" : ""}>
+        <Button
+          fullWidth
+          className={!isSidebarOpen ? "size-10 p-0" : ""}
+          onClick={createTemplate}
+        >
           <PlusIcon weight="bold" />
           <span className={!isSidebarOpen ? "hidden" : ""}>New Template</span>
         </Button>
