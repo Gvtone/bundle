@@ -7,7 +7,7 @@ import { useTemplate } from "@/renderer/context/TemplateContext";
 function MainHeader() {
   const { templateId } = useParams();
   const { pathname } = useLocation();
-  const { meta, save } = useTemplate();
+  const { meta, save, insertPlaceholder } = useTemplate();
   const isEdit = pathname.endsWith("/edit");
 
   return (
@@ -23,7 +23,12 @@ function MainHeader() {
       <div className="flex gap-2 z-10">
         {isEdit ? (
           <>
-            <Button size="sm" className="text-xs items-center">
+            <Button
+              size="sm"
+              className="text-xs items-center"
+              onClick={() => insertPlaceholder?.()}
+              disabled={!insertPlaceholder}
+            >
               <span className="font-bundle-mono">{"{·}"}</span>
               <span className="leading-0 max-md:hidden">New placeholder</span>
             </Button>

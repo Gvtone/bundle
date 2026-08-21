@@ -18,11 +18,15 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import { FontSize } from "@/renderer/lib/font-size-extension";
 import PlaceholderCard from "../components/edit-template/PlaceholderCard";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { PlaceholderExtension } from "@/renderer/lib/placeholder-extension";
+import { slugify } from "@/renderer/utils/slugify";
+import type { Placeholder } from "@/shared/types";
 
 // Page size definitions — width/height in pixels at 96dpi (standard screen)
 const PAGE_SIZES = {
@@ -64,30 +68,43 @@ const FONT_SIZE_OPTIONS = [
 ];
 
 function EditTemplatePage() {
-  const { meta, content, loading, save, setSaveHandler } = useTemplate();
+  const {
+    meta,
+    content,
+    loading,
+    save,
+    setSaveHandler,
+    updatePlaceholders,
+    setInsertPlaceholderHandler
+  } = useTemplate();
   const { refetch } = useTemplates();
   const [pageSize, setPageSize] = useState<PageSizeKey>("letter");
   const [margins, setMargins] = useState(96);
   const [customSize, setCustomSize] = useState({ width: 816, height: 1056 });
+  const [deleteTarget, setDeleteTarget] = useState<Placeholder | null>(null);
 
   const currentPageSize =
     pageSize === "custom" ? customSize : PAGE_SIZES[pageSize];
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      TextStyle,
-      FontFamily,
-      FontSize
-    ],
-    content: (content as object) ?? {
-      type: "doc",
-      content: [{ type: "paragraph" }]
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit,
+        Underline,
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
+        TextStyle,
+        FontFamily,
+        FontSize,
+        PlaceholderExtension
+      ],
+      content: (content as object) ?? {
+        type: "doc",
+        content: [{ type: "paragraph" }]
+      },
+      immediatelyRender: false
     },
-    immediatelyRender: false
-  }, [content]);
+    [content]
+  );
 
   const editorState = useEditorState({
     editor,
@@ -105,6 +122,20 @@ function EditTemplatePage() {
       currentFont: ctx.editor?.getAttributes("textStyle")["fontFamily"] ?? "",
       currentSize: ctx.editor?.getAttributes("textStyle")["fontSize"] ?? ""
     })
+  });
+
+  // Computed directly from `editor` (not via the useEditorState selector above) because
+  // tiptap-react's EditorStateManager only refreshes its cached snapshot on a real
+  // transaction — when useEditor([content]) swaps in a brand-new editor instance on
+  // template load, the selector snapshot stays stale (pointing at the previous editor)
+  // until the user's first interaction fires a transaction. Reading `editor` directly
+  // here avoids that staleness since `editor` itself updates immediately on swap.
+  const placeholderCounts: Record<string, number> = {};
+  editor?.state.doc.descendants(node => {
+    if (node.type.name === "placeholder") {
+      const id = node.attrs["id"] as string;
+      placeholderCounts[id] = (placeholderCounts[id] ?? 0) + 1;
+    }
   });
 
   useEffect(() => {
@@ -135,6 +166,69 @@ function EditTemplatePage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [save]);
+
+  function nextAvailableLabel(existing: Placeholder[]): string {
+    const base = "New field";
+    const labels = new Set(existing.map(p => p.label));
+    if (!labels.has(base)) return base;
+    let n = 2;
+    while (labels.has(`${base} ${n}`)) n++;
+    return `${base} ${n}`;
+  }
+
+  useEffect(() => {
+    if (!editor || !meta) return;
+
+    setInsertPlaceholderHandler(() => {
+      const { from, to, empty } = editor.state.selection;
+      const selectedText = empty
+        ? ""
+        : editor.state.doc.textBetween(from, to, " ");
+      const label = selectedText || nextAvailableLabel(meta.placeholders);
+      const id = crypto.randomUUID();
+      const key = slugify(label);
+
+      updatePlaceholders(prev => [
+        ...prev,
+        {
+          id,
+          key,
+          label,
+          type: "text",
+          style: { bold: false, italic: false, underline: false }
+        }
+      ]);
+
+      editor
+        .chain()
+        .focus()
+        .insertContentAt({ from, to }, { type: "placeholder", attrs: { id } })
+        .run();
+    });
+
+    return () => setInsertPlaceholderHandler(null);
+  }, [editor, meta, updatePlaceholders, setInsertPlaceholderHandler]);
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget || !editor) return;
+    const id = deleteTarget.id;
+
+    const positions: number[] = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === "placeholder" && node.attrs["id"] === id) {
+        positions.push(pos);
+      }
+    });
+
+    let chain = editor.chain().focus();
+    for (const pos of positions.reverse()) {
+      chain = chain.deleteRange({ from: pos, to: pos + 1 });
+    }
+    chain.run();
+
+    updatePlaceholders(prev => prev.filter(p => p.id !== id));
+    setDeleteTarget(null);
+  }
 
   function handleFontChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const value = e.target.value;
@@ -354,7 +448,11 @@ function EditTemplatePage() {
                 minHeight: `${currentPageSize.height}px`,
                 padding: `${margins}px`
               }}
-              onClick={() => editor?.commands.focus("end")}
+              onClick={e => {
+                if (e.target === e.currentTarget) {
+                  editor?.commands.focus("end");
+                }
+              }}
             >
               <EditorContent
                 editor={editor}
@@ -366,8 +464,8 @@ function EditTemplatePage() {
       </div>
 
       {/* Placeholder panel */}
-      <aside className="w-72 bg-card border-l border-border">
-        <div className="border-b border-border p-4">
+      <aside className="w-72 bg-card border-l border-border flex flex-col h-full overflow-hidden">
+        <div className="border-b border-border p-4 shrink-0">
           <h3 className="text-xs tracking-widest font-semibold text-subtle-foreground">
             PLACEHOLDER FIELDS
           </h3>
@@ -376,10 +474,56 @@ function EditTemplatePage() {
             retype fields here.
           </p>
         </div>
-        <div className="p-4">
-          <PlaceholderCard />
+        <div className="p-4 flex flex-col gap-3 flex-1 overflow-y-auto">
+          {(meta?.placeholders ?? []).map(p => (
+            <PlaceholderCard
+              key={p.id}
+              placeholder={p}
+              useCount={placeholderCounts[p.id] ?? 0}
+              onLabelChange={label =>
+                updatePlaceholders(prev =>
+                  prev.map(x =>
+                    x.id === p.id ? { ...x, label, key: slugify(label) } : x
+                  )
+                )
+              }
+              onTypeChange={type =>
+                updatePlaceholders(prev =>
+                  prev.map(x => (x.id === p.id ? { ...x, type } : x))
+                )
+              }
+              onStyleChange={style =>
+                updatePlaceholders(prev =>
+                  prev.map(x =>
+                    x.id === p.id
+                      ? { ...x, style: { ...x.style, ...style } }
+                      : x
+                  )
+                )
+              }
+              onDeleteRequest={() => setDeleteTarget(p)}
+              onInsert={() =>
+                editor
+                  ?.chain()
+                  .focus()
+                  .insertContent({ type: "placeholder", attrs: { id: p.id } })
+                  .run()
+              }
+            />
+          ))}
         </div>
       </aside>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={`Delete "${deleteTarget?.label}"?`}
+        description={`Used in ${
+          placeholderCounts[deleteTarget?.id ?? ""] ?? 0
+        } place(s). This can't be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

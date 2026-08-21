@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router";
-import type { Template } from "@/shared/types";
+import type { Placeholder, Template } from "@/shared/types";
 
 interface TemplateContextValue {
   meta: Template | null;
@@ -9,6 +9,10 @@ interface TemplateContextValue {
   error: Error | null;
   save: (() => Promise<void>) | null;
   setSaveHandler: (fn: (() => Promise<void>) | null) => void;
+  placeholders: Placeholder[];
+  updatePlaceholders: (updater: (prev: Placeholder[]) => Placeholder[]) => void;
+  insertPlaceholder: (() => void) | null;
+  setInsertPlaceholderHandler: (fn: (() => void) | null) => void;
 }
 
 const TemplateContext = createContext<TemplateContextValue | undefined>(
@@ -27,6 +31,23 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const [insert, setInsert] = useState<(() => void) | null>(null);
+  const setInsertPlaceholderHandler = useCallback(
+    (fn: (() => void) | null) => setInsert(() => fn),
+    []
+  );
+
+  const updatePlaceholders = useCallback(
+    (updater: (prev: Placeholder[]) => Placeholder[]) => {
+      setMeta(prev =>
+        prev ? { ...prev, placeholders: updater(prev.placeholders) } : prev
+      );
+    },
+    []
+  );
+
+  const placeholders = meta?.placeholders ?? [];
+
   useEffect(() => {
     if (!templateId) return;
 
@@ -43,7 +64,18 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <TemplateContext.Provider
-      value={{ meta, content, loading, error, save, setSaveHandler }}
+      value={{
+        meta,
+        content,
+        loading,
+        error,
+        save,
+        setSaveHandler,
+        placeholders,
+        updatePlaceholders,
+        insertPlaceholder: insert,
+        setInsertPlaceholderHandler
+      }}
     >
       {children}
     </TemplateContext.Provider>

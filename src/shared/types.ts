@@ -1,6 +1,7 @@
 export interface PlaceholderStyle {
   bold: boolean;
   italic: boolean;
+  underline: boolean;
   fontSize?: number;
   fontFamily?: string;
 }
