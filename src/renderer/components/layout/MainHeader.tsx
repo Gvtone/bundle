@@ -7,11 +7,12 @@ import { useTemplate } from "@/renderer/context/TemplateContext";
 function MainHeader() {
   const { templateId } = useParams();
   const { pathname } = useLocation();
-  const { meta, save, insertPlaceholder } = useTemplate();
+  const { meta, save, insertPlaceholder, exportHandler, printHandler } =
+    useTemplate();
   const isEdit = pathname.endsWith("/edit");
 
   return (
-    <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2">
+    <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2 print:hidden">
       <div className="flex flex-col z-10">
         <h2 className="text-sm font-semibold">{meta?.name ?? "Loading..."}</h2>
         <p className="text-xs text-subtle-foreground">
@@ -44,12 +45,22 @@ function MainHeader() {
           </>
         ) : (
           <>
-            <Button size="sm" className="text-xs items-center">
+            <Button
+              size="sm"
+              className="text-xs items-center"
+              onClick={() => printHandler?.()}
+              disabled={!printHandler}
+            >
               <PrinterIcon />
               Print
             </Button>
 
-            <Button size="sm" variant="secondary">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => exportHandler?.()}
+              disabled={!exportHandler}
+            >
               <ExportIcon />
               Export
             </Button>

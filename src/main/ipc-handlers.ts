@@ -1,10 +1,13 @@
-import { ipcMain } from "electron";
+import { ipcMain, BrowserWindow, dialog } from "electron";
+import fs from "node:fs/promises";
 import {
   saveTemplate,
   listTemplates,
   loadTemplate,
   deleteTemplate
 } from "./template-store";
+import { buildDocx, sanitizeFilename } from "./document-store";
+import type { ExportPayload } from "../shared/types";
 
 export function registerIpcHandlers() {
   ipcMain.handle("template:save", async (_event, template, content) => {
@@ -21,5 +24,51 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("template:delete", async (_event, id: string) => {
     return deleteTemplate(id);
+  });
+
+  ipcMain.handle("document:export", async (event, payload: ExportPayload) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) throw new Error("No window found for export request");
+
+    const filename = sanitizeFilename(payload.templateName);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      defaultPath: `${filename}.${payload.format}`,
+      filters:
+        payload.format === "pdf"
+          ? [{ name: "PDF", extensions: ["pdf"] }]
+          : [{ name: "Word Document", extensions: ["docx"] }]
+    });
+
+    if (canceled || !filePath) return { canceled: true };
+
+    const buffer =
+      payload.format === "pdf"
+        ? await win.webContents.printToPDF({
+            pageSize: "Letter",
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            printBackground: true
+          })
+        : await buildDocx(payload);
+
+    await fs.writeFile(filePath, buffer);
+    return { canceled: false, filePath };
+  });
+
+  ipcMain.handle("document:print", async event => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) throw new Error("No window found for print request");
+
+    return new Promise<void>((resolve, reject) => {
+      win.webContents.print(
+        { margins: { marginType: "none" }, printBackground: true },
+        (success, failureReason) => {
+          if (success || failureReason === "Print job canceled") {
+            resolve();
+          } else {
+            reject(new Error(failureReason));
+          }
+        }
+      );
+    });
   });
 }

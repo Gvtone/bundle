@@ -14,7 +14,7 @@ import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
-import FontFamily from "@tiptap/extension-font-family";
+import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
 import { FontSize } from "@/renderer/lib/font-size-extension";
 import PlaceholderCard from "../components/edit-template/PlaceholderCard";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -93,7 +93,7 @@ function EditTemplatePage() {
         StarterKit,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         TextStyle,
-        FontFamily,
+        NormalizedFontFamily,
         FontSize,
         createPlaceholderExtension(PlaceholderChip)
       ],

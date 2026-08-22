@@ -14,6 +14,10 @@ interface TemplateContextValue {
   updatePlaceholders: (updater: (prev: Placeholder[]) => Placeholder[]) => void;
   insertPlaceholder: (() => void) | null;
   setInsertPlaceholderHandler: (fn: (() => void) | null) => void;
+  exportHandler: (() => void) | null;
+  setExportHandler: (fn: (() => void) | null) => void;
+  printHandler: (() => void) | null;
+  setPrintHandler: (fn: (() => void) | null) => void;
 }
 
 const TemplateContext = createContext<TemplateContextValue | undefined>(
@@ -35,6 +39,22 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
   const [insert, setInsert] = useState<(() => void) | null>(null);
   const setInsertPlaceholderHandler = useCallback(
     (fn: (() => void) | null) => setInsert(() => fn),
+    []
+  );
+
+  const [exportHandler, setExportHandlerState] = useState<
+    (() => void) | null
+  >(null);
+  const setExportHandler = useCallback(
+    (fn: (() => void) | null) => setExportHandlerState(() => fn),
+    []
+  );
+
+  const [printHandler, setPrintHandlerState] = useState<
+    (() => void) | null
+  >(null);
+  const setPrintHandler = useCallback(
+    (fn: (() => void) | null) => setPrintHandlerState(() => fn),
     []
   );
 
@@ -76,7 +96,11 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
         placeholders,
         updatePlaceholders,
         insertPlaceholder: insert,
-        setInsertPlaceholderHandler
+        setInsertPlaceholderHandler,
+        exportHandler,
+        setExportHandler,
+        printHandler,
+        setPrintHandler
       }}
     >
       {children}

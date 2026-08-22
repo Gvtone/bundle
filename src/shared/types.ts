@@ -26,6 +26,21 @@ export interface Template {
   placeholders: Placeholder[];
 }
 
+export type ExportFormat = "pdf" | "docx";
+
+export interface ExportPayload {
+  templateName: string;
+  format: ExportFormat;
+  content: unknown;
+  placeholders: Placeholder[];
+  values: Record<string, string>;
+}
+
+export interface ExportResult {
+  canceled: boolean;
+  filePath?: string;
+}
+
 export interface BundleApi {
   saveTemplate: (
     template: Partial<Template>,
@@ -34,4 +49,6 @@ export interface BundleApi {
   listTemplates: () => Promise<Template[]>;
   loadTemplate: (id: string) => Promise<{ meta: Template; content: unknown }>;
   deleteTemplate: (id: string) => Promise<void>;
+  exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
+  printDocument: () => Promise<void>;
 }

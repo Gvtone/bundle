@@ -15,9 +15,9 @@ function RootLayoutContent() {
       <div className="min-h-screen flex flex-col bg-background">
         <div className="flex-1">
           <Suspense>
-            <div className="flex flex-col h-screen">
+            <div className="flex flex-col h-screen print:h-auto">
               <TitleBar />
-              <div className="flex flex-1 overflow-hidden">
+              <div className="flex flex-1 overflow-hidden print:flex-none print:h-auto print:overflow-visible">
                 <Sidebar />
                 <Outlet />
               </div>

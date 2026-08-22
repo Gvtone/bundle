@@ -1,11 +1,11 @@
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import { useFillValues } from "@/renderer/context/FillValuesContext";
-import { DATE_FORMATS } from "@/renderer/utils/dateFormats";
+import { DATE_FORMATS } from "@/shared/dateFormats";
 
 function FilledPlaceholderChip({ node }: ReactNodeViewProps) {
   const { placeholders } = useTemplate();
-  const { values } = useFillValues();
+  const { values, isCapturingSnapshot } = useFillValues();
   const placeholder = placeholders.find(p => p.id === node.attrs["id"]);
 
   if (!placeholder) {
@@ -33,6 +33,12 @@ function FilledPlaceholderChip({ node }: ReactNodeViewProps) {
   const rawValue = values[placeholder.id];
 
   if (!rawValue) {
+    if (isCapturingSnapshot) {
+      return (
+        <NodeViewWrapper as="span" contentEditable={false} style={style} />
+      );
+    }
+
     return (
       <NodeViewWrapper
         as="span"

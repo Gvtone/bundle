@@ -2,7 +2,7 @@ import { XIcon } from "@phosphor-icons/react";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useState } from "react";
-import { DATE_FORMATS } from "@/renderer/utils/dateFormats";
+import { DATE_FORMATS } from "@/shared/dateFormats";
 import type {
   DateFormatKey,
   Placeholder,
