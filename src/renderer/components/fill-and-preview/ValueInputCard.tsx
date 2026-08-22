@@ -1,15 +1,22 @@
 import { ClockCounterClockwiseIcon, GridFourIcon } from "@phosphor-icons/react";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
+import type { Placeholder } from "@/shared/types";
 
-function ValueInputCard() {
+interface ValueInputCardProps {
+  placeholder: Placeholder;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function ValueInputCard({ placeholder, value, onChange }: ValueInputCardProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-between">
         <div className="flex items-center gap-1">
-          <p className="text-sm">Name</p>
+          <p className="text-sm">{placeholder.label}</p>
           <p className="text-xs text-subtle-foreground font-serif">
-            {"{{name}}"}
+            {`{{${placeholder.key}}}`}
           </p>
         </div>
 
@@ -24,7 +31,21 @@ function ValueInputCard() {
         </div>
       </div>
 
-      <Input fullWidth />
+      {placeholder.type === "paragraph" ? (
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          rows={4}
+          className="w-full rounded-lg bg-card-muted border border-border px-3 py-2 text-sm focus:outline-none"
+        />
+      ) : (
+        <Input
+          type={placeholder.type === "date" ? "date" : "text"}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          fullWidth
+        />
+      )}
     </div>
   );
 }

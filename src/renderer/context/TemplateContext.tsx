@@ -5,6 +5,7 @@ import type { Placeholder, Template } from "@/shared/types";
 interface TemplateContextValue {
   meta: Template | null;
   content: unknown;
+  setContent: (content: unknown) => void;
   loading: boolean;
   error: Error | null;
   save: (() => Promise<void>) | null;
@@ -67,6 +68,7 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
       value={{
         meta,
         content,
+        setContent,
         loading,
         error,
         save,

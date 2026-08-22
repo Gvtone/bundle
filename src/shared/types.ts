@@ -1,3 +1,5 @@
+export type DateFormatKey = "long";
+
 export interface PlaceholderStyle {
   bold: boolean;
   italic: boolean;
@@ -12,6 +14,7 @@ export interface Placeholder {
   label: string;
   type: "text" | "date" | "paragraph";
   style: PlaceholderStyle;
+  dateFormat?: DateFormatKey;
 }
 
 export interface Template {

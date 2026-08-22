@@ -2,7 +2,12 @@ import { XIcon } from "@phosphor-icons/react";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useState } from "react";
-import type { Placeholder, PlaceholderStyle } from "@/shared/types";
+import { DATE_FORMATS } from "@/renderer/utils/dateFormats";
+import type {
+  DateFormatKey,
+  Placeholder,
+  PlaceholderStyle
+} from "@/shared/types";
 
 interface PlaceholderCardProps {
   placeholder: Placeholder;
@@ -10,6 +15,7 @@ interface PlaceholderCardProps {
   onLabelChange: (label: string) => void;
   onTypeChange: (type: Placeholder["type"]) => void;
   onStyleChange: (style: Partial<PlaceholderStyle>) => void;
+  onDateFormatChange: (format: DateFormatKey) => void;
   onDeleteRequest: () => void;
   onInsert: () => void;
 }
@@ -20,6 +26,7 @@ function PlaceholderCard({
   onLabelChange,
   onTypeChange,
   onStyleChange,
+  onDateFormatChange,
   onDeleteRequest,
   onInsert
 }: PlaceholderCardProps) {
@@ -86,6 +93,20 @@ function PlaceholderCard({
             ¶
           </Button>
         </div>
+
+        {placeholder.type === "date" && (
+          <select
+            value={placeholder.dateFormat ?? "long"}
+            onChange={e => onDateFormatChange(e.target.value as DateFormatKey)}
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full focus:outline-none"
+          >
+            {Object.entries(DATE_FORMATS).map(([key, fmt]) => (
+              <option key={key} value={key}>
+                {fmt.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         {isTextStylingOpen && (
           <>

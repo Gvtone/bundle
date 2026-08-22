@@ -12,7 +12,6 @@ import {
 } from "@phosphor-icons/react";
 import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
@@ -24,7 +23,8 @@ import { useTemplate } from "@/renderer/context/TemplateContext";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { PlaceholderExtension } from "@/renderer/lib/placeholder-extension";
+import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension";
+import PlaceholderChip from "../components/edit-template/PlaceholderChip";
 import { slugify } from "@/renderer/utils/slugify";
 import type { Placeholder } from "@/shared/types";
 
@@ -71,6 +71,7 @@ function EditTemplatePage() {
   const {
     meta,
     content,
+    setContent,
     loading,
     save,
     setSaveHandler,
@@ -90,12 +91,11 @@ function EditTemplatePage() {
     {
       extensions: [
         StarterKit,
-        Underline,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         TextStyle,
         FontFamily,
         FontSize,
-        PlaceholderExtension
+        createPlaceholderExtension(PlaceholderChip)
       ],
       content: (content as object) ?? {
         type: "doc",
@@ -143,7 +143,9 @@ function EditTemplatePage() {
 
     setSaveHandler(async () => {
       try {
-        await window.bundle.saveTemplate(meta, editor.getJSON());
+        const json = editor.getJSON();
+        await window.bundle.saveTemplate(meta, json);
+        setContent(json);
         refetch();
         toast.success("Template saved");
       } catch (err) {
@@ -154,7 +156,7 @@ function EditTemplatePage() {
     });
 
     return () => setSaveHandler(null);
-  }, [editor, meta, refetch, setSaveHandler]);
+  }, [editor, meta, refetch, setSaveHandler, setContent]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -499,6 +501,11 @@ function EditTemplatePage() {
                       ? { ...x, style: { ...x.style, ...style } }
                       : x
                   )
+                )
+              }
+              onDateFormatChange={dateFormat =>
+                updatePlaceholders(prev =>
+                  prev.map(x => (x.id === p.id ? { ...x, dateFormat } : x))
                 )
               }
               onDeleteRequest={() => setDeleteTarget(p)}
