@@ -2,7 +2,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
 import { FontSize } from "@/renderer/lib/font-size-extension";
@@ -11,6 +11,9 @@ import FilledPlaceholderChip from "../components/fill-and-preview/FilledPlacehol
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ValueInputCard from "../components/fill-and-preview/ValueInputCard";
+import RowSelector from "../components/fill-and-preview/RowSelector";
+import { buildBulkFilename } from "@/renderer/utils/bulkFilename";
+import { cn } from "@/renderer/utils/utils";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import {
   FillValuesProvider,
@@ -34,18 +37,62 @@ function FillAndPreviewPage() {
 }
 
 function FillAndPreviewContent() {
-  const { meta, content, loading, setExportHandler, setPrintHandler } =
-    useTemplate();
-  const { values, setValue, setIsCapturingSnapshot } = useFillValues();
+  const {
+    meta,
+    content,
+    loading,
+    setExportHandler,
+    setPrintHandler,
+    setBulkExportState
+  } = useTemplate();
+  const {
+    values,
+    setValue,
+    setIsCapturingSnapshot,
+    listEnabled,
+    setListEnabled,
+    listValues,
+    setListRows,
+    currentRow,
+    setCurrentRow
+  } = useFillValues();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
-  const [pendingAction, setPendingAction] = useState<"export" | "print" | null>(
-    null
-  );
+  const [pendingAction, setPendingAction] = useState<
+    "export-current" | "export-all" | "print-current" | "print-all" | null
+  >(null);
+  const [isMergedPrintActive, setIsMergedPrintActive] = useState(false);
+
+  const paperRef = useRef<HTMLDivElement>(null);
+  const mergedPrintRef = useRef<HTMLDivElement>(null);
 
   const blankPlaceholders = (meta?.placeholders ?? []).filter(
     p => !values[p.id]
   );
+
+  const listFields = (meta?.placeholders ?? []).filter(p => listEnabled[p.id]);
+  const rowCounts = listFields.map(p => ({
+    label: p.label,
+    count: listValues[p.id]?.length ?? 0
+  }));
+  const rowCountMismatch =
+    new Set(rowCounts.map(r => r.count)).size > 1
+      ? rowCounts
+          .map(r => `${r.label}: ${r.count} row${r.count === 1 ? "" : "s"}`)
+          .join(", ")
+      : null;
+  const rowCount = rowCountMismatch ? 0 : (rowCounts[0]?.count ?? 1);
+
+  const blankCellsAllRows: string[] = [];
+  for (const p of meta?.placeholders ?? []) {
+    if (listEnabled[p.id]) {
+      (listValues[p.id] ?? []).forEach((v, i) => {
+        if (!v) blankCellsAllRows.push(`${p.label} (Row ${i + 1})`);
+      });
+    } else if (!values[p.id]) {
+      blankCellsAllRows.push(p.label);
+    }
+  }
 
   function waitForPaint() {
     return new Promise<void>(resolve => {
@@ -87,12 +134,100 @@ function FillAndPreviewContent() {
     }
   }
 
+  async function runExportAll() {
+    if (!meta || rowCountMismatch) return;
+    const folderResult = await window.bundle.chooseExportFolder();
+    if (folderResult.canceled || !folderResult.folderPath) return;
+    const folderPath = folderResult.folderPath;
+
+    try {
+      if (format === "pdf") setIsCapturingSnapshot(true);
+      const usedNames = new Set<string>();
+
+      for (let i = 0; i < rowCount; i++) {
+        setCurrentRow(i);
+        if (format === "pdf") await waitForPaint();
+
+        const rowValues: Record<string, string> = {};
+        for (const p of meta.placeholders) {
+          rowValues[p.id] = listEnabled[p.id]
+            ? (listValues[p.id]?.[i] ?? "")
+            : (values[p.id] ?? "");
+        }
+
+        const listFieldValuesForRow = listFields.map(
+          p => listValues[p.id]?.[i] ?? ""
+        );
+        const filename = buildBulkFilename(
+          meta.name,
+          listFieldValuesForRow,
+          format,
+          usedNames
+        );
+
+        const result = await window.bundle.exportDocument({
+          templateName: meta.name,
+          format,
+          content,
+          placeholders: meta.placeholders,
+          values: rowValues,
+          destinationPath: `${folderPath}/${filename}`
+        });
+        if (result.canceled) {
+          throw new Error(`Row ${i + 1} was not written`);
+        }
+      }
+
+      toast.success(`Exported ${rowCount} documents`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Bulk export failed");
+    } finally {
+      setIsCapturingSnapshot(false);
+    }
+  }
+
+  async function runPrintAll() {
+    if (!meta || rowCountMismatch) return;
+    const container = mergedPrintRef.current;
+    if (!container) return;
+
+    try {
+      setIsCapturingSnapshot(true);
+      setIsMergedPrintActive(true);
+      container.innerHTML = "";
+
+      for (let i = 0; i < rowCount; i++) {
+        setCurrentRow(i);
+        await waitForPaint();
+
+        const snapshot = paperRef.current?.cloneNode(true) as
+          | HTMLElement
+          | undefined;
+        if (!snapshot) continue;
+
+        const wrapper = document.createElement("div");
+        if (i < rowCount - 1) wrapper.style.breakAfter = "page";
+        wrapper.appendChild(snapshot);
+        container.appendChild(wrapper);
+      }
+
+      await waitForPaint();
+      await window.bundle.printDocument();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Print failed");
+    } finally {
+      setIsCapturingSnapshot(false);
+      setIsMergedPrintActive(false);
+      container.innerHTML = "";
+    }
+  }
+
   useEffect(() => {
     if (!meta) return;
 
     setExportHandler(() => {
       if (blankPlaceholders.length > 0) {
-        setPendingAction("export");
+        setPendingAction("export-current");
       } else {
         runExport();
       }
@@ -107,7 +242,7 @@ function FillAndPreviewContent() {
 
     setPrintHandler(() => {
       if (blankPlaceholders.length > 0) {
-        setPendingAction("print");
+        setPendingAction("print-current");
       } else {
         runPrint();
       }
@@ -116,6 +251,65 @@ function FillAndPreviewContent() {
     return () => setPrintHandler(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta, values, setPrintHandler]);
+
+  useEffect(() => {
+    setBulkExportState({
+      hasListFields: listFields.length > 0,
+      rowCount,
+      rowMismatchMessage: rowCountMismatch,
+      exportAllHandler:
+        listFields.length > 0 && !rowCountMismatch
+          ? () => {
+              if (blankCellsAllRows.length > 0) {
+                setPendingAction("export-all");
+              } else {
+                runExportAll();
+              }
+            }
+          : null,
+      printAllHandler:
+        listFields.length > 0 && !rowCountMismatch
+          ? () => {
+              if (blankCellsAllRows.length > 0) {
+                setPendingAction("print-all");
+              } else {
+                runPrintAll();
+              }
+            }
+          : null
+    });
+
+    return () =>
+      setBulkExportState({
+        hasListFields: false,
+        rowCount: 0,
+        rowMismatchMessage: null,
+        exportAllHandler: null,
+        printAllHandler: null
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    meta,
+    content,
+    values,
+    format,
+    listEnabled,
+    listValues,
+    currentRow,
+    setBulkExportState
+  ]);
+
+  const confirmIsAll =
+    pendingAction === "export-all" || pendingAction === "print-all";
+  const confirmCells = confirmIsAll
+    ? blankCellsAllRows
+    : blankPlaceholders.map(p => p.label);
+  const confirmShown = confirmCells.slice(0, 10);
+  const confirmExtra =
+    confirmCells.length > 10 ? ` +${confirmCells.length - 10} more` : "";
+  const confirmDescription = `${confirmShown.join(", ")}${confirmExtra} ${
+    confirmCells.length === 1 ? "is" : "are"
+  } empty. ${pendingAction?.startsWith("print") ? "Print" : "Export"} anyway?`;
 
   const editor = useEditor(
     {
@@ -160,6 +354,12 @@ function FillAndPreviewContent() {
               placeholder={p}
               value={values[p.id] ?? ""}
               onChange={value => setValue(p.id, value)}
+              listEnabled={listEnabled[p.id] ?? false}
+              onToggleList={() =>
+                setListEnabled(p.id, !(listEnabled[p.id] ?? false))
+              }
+              listText={(listValues[p.id] ?? []).join("\n")}
+              onListTextChange={text => setListRows(p.id, text)}
             />
           ))}
         </div>
@@ -190,36 +390,58 @@ function FillAndPreviewContent() {
         </div>
       </aside>
 
-      <div className="flex-1 overflow-auto bg-[#e8e5df] p-8 print:flex-none print:h-auto print:overflow-visible print:p-0 print:bg-white">
-        {!loading && (
-          <div
-            className="bg-white mx-auto shadow-md print:shadow-none print:mx-0"
-            style={{
-              width: `${PAGE_WIDTH}px`,
-              minHeight: `${PAGE_HEIGHT}px`,
-              padding: `${MARGINS}px`
-            }}
-          >
-            <EditorContent
-              editor={editor}
-              className="outline-none min-h-full prose prose-sm max-w-none"
-            />
-          </div>
+      <div
+        className={cn(
+          "flex-1 flex flex-col overflow-hidden print:flex-none print:h-auto print:overflow-visible",
+          isMergedPrintActive && "print:hidden"
         )}
+      >
+        {listFields.length > 0 && (
+          <RowSelector
+            currentRow={currentRow}
+            rowCount={rowCount}
+            mismatchMessage={rowCountMismatch}
+            onChange={setCurrentRow}
+          />
+        )}
+
+        <div className="flex-1 overflow-auto bg-[#e8e5df] p-8 print:overflow-visible print:p-0 print:bg-white">
+          {!loading && (
+            <div
+              ref={paperRef}
+              className="bg-white mx-auto shadow-md print:shadow-none print:mx-0"
+              style={{
+                width: `${PAGE_WIDTH}px`,
+                minHeight: `${PAGE_HEIGHT}px`,
+                padding: `${MARGINS}px`
+              }}
+            >
+              <EditorContent
+                editor={editor}
+                className="outline-none min-h-full prose prose-sm max-w-none"
+              />
+            </div>
+          )}
+        </div>
       </div>
+
+      <div
+        ref={mergedPrintRef}
+        className={cn("hidden", isMergedPrintActive && "print:block")}
+      />
 
       <ConfirmDialog
         open={pendingAction !== null}
         title="Some fields are still blank"
-        description={`${blankPlaceholders.map(p => p.label).join(", ")} ${
-          blankPlaceholders.length === 1 ? "is" : "are"
-        } empty. ${pendingAction === "print" ? "Print" : "Export"} anyway?`}
+        description={confirmDescription}
         confirmLabel={
-          pendingAction === "print" ? "Print anyway" : "Export anyway"
+          pendingAction?.startsWith("print") ? "Print anyway" : "Export anyway"
         }
         onConfirm={() => {
-          if (pendingAction === "print") runPrint();
-          else runExport();
+          if (pendingAction === "export-current") runExport();
+          else if (pendingAction === "export-all") runExportAll();
+          else if (pendingAction === "print-current") runPrint();
+          else if (pendingAction === "print-all") runPrintAll();
           setPendingAction(null);
         }}
         onCancel={() => setPendingAction(null)}

@@ -1,5 +1,6 @@
 import Button from "../ui/Button";
 import LinkButton from "../ui/LinkButton";
+import ActionMenuButton from "./ActionMenuButton";
 import { useLocation, useParams } from "react-router";
 import { ExportIcon, PrinterIcon } from "@phosphor-icons/react";
 import { useTemplate } from "@/renderer/context/TemplateContext";
@@ -7,8 +8,14 @@ import { useTemplate } from "@/renderer/context/TemplateContext";
 function MainHeader() {
   const { templateId } = useParams();
   const { pathname } = useLocation();
-  const { meta, save, insertPlaceholder, exportHandler, printHandler } =
-    useTemplate();
+  const {
+    meta,
+    save,
+    insertPlaceholder,
+    exportHandler,
+    printHandler,
+    bulkExportState
+  } = useTemplate();
   const isEdit = pathname.endsWith("/edit");
 
   return (
@@ -45,25 +52,26 @@ function MainHeader() {
           </>
         ) : (
           <>
-            <Button
-              size="sm"
-              className="text-xs items-center"
-              onClick={() => printHandler?.()}
-              disabled={!printHandler}
-            >
-              <PrinterIcon />
-              Print
-            </Button>
+            <ActionMenuButton
+              label="Print"
+              icon={<PrinterIcon />}
+              primaryHandler={printHandler}
+              allHandler={bulkExportState.printAllHandler}
+              allDisabledReason={bulkExportState.rowMismatchMessage}
+              showMenu={bulkExportState.hasListFields}
+              rowCount={bulkExportState.rowCount}
+            />
 
-            <Button
-              size="sm"
+            <ActionMenuButton
+              label="Export"
+              icon={<ExportIcon />}
               variant="secondary"
-              onClick={() => exportHandler?.()}
-              disabled={!exportHandler}
-            >
-              <ExportIcon />
-              Export
-            </Button>
+              primaryHandler={exportHandler}
+              allHandler={bulkExportState.exportAllHandler}
+              allDisabledReason={bulkExportState.rowMismatchMessage}
+              showMenu={bulkExportState.hasListFields}
+              rowCount={bulkExportState.rowCount}
+            />
           </>
         )}
       </div>

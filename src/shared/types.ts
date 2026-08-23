@@ -34,11 +34,17 @@ export interface ExportPayload {
   content: unknown;
   placeholders: Placeholder[];
   values: Record<string, string>;
+  destinationPath?: string; // when set, document:export writes here directly, skipping its save dialog
 }
 
 export interface ExportResult {
   canceled: boolean;
   filePath?: string;
+}
+
+export interface ChooseFolderResult {
+  canceled: boolean;
+  folderPath?: string;
 }
 
 export interface BundleApi {
@@ -51,4 +57,5 @@ export interface BundleApi {
   deleteTemplate: (id: string) => Promise<void>;
   exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
   printDocument: () => Promise<void>;
+  chooseExportFolder: () => Promise<ChooseFolderResult>;
 }

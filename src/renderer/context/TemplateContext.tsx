@@ -2,6 +2,22 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { useParams } from "react-router";
 import type { Placeholder, Template } from "@/shared/types";
 
+export interface BulkExportState {
+  hasListFields: boolean;
+  rowCount: number;
+  rowMismatchMessage: string | null;
+  exportAllHandler: (() => void) | null;
+  printAllHandler: (() => void) | null;
+}
+
+const DEFAULT_BULK_EXPORT_STATE: BulkExportState = {
+  hasListFields: false,
+  rowCount: 0,
+  rowMismatchMessage: null,
+  exportAllHandler: null,
+  printAllHandler: null
+};
+
 interface TemplateContextValue {
   meta: Template | null;
   content: unknown;
@@ -18,6 +34,8 @@ interface TemplateContextValue {
   setExportHandler: (fn: (() => void) | null) => void;
   printHandler: (() => void) | null;
   setPrintHandler: (fn: (() => void) | null) => void;
+  bulkExportState: BulkExportState;
+  setBulkExportState: (state: BulkExportState) => void;
 }
 
 const TemplateContext = createContext<TemplateContextValue | undefined>(
@@ -56,6 +74,10 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
   const setPrintHandler = useCallback(
     (fn: (() => void) | null) => setPrintHandlerState(() => fn),
     []
+  );
+
+  const [bulkExportState, setBulkExportState] = useState<BulkExportState>(
+    DEFAULT_BULK_EXPORT_STATE
   );
 
   const updatePlaceholders = useCallback(
@@ -100,7 +122,9 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
         exportHandler,
         setExportHandler,
         printHandler,
-        setPrintHandler
+        setPrintHandler,
+        bulkExportState,
+        setBulkExportState
       }}
     >
       {children}

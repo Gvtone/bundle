@@ -259,8 +259,3 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
 
   return Packer.toBuffer(document);
 }
-
-export function sanitizeFilename(name: string): string {
-  const cleaned = name.replace(/[\\/:*?"<>|]/g, "").trim();
-  return cleaned || "document";
-}

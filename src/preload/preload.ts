@@ -8,7 +8,8 @@ const api: BundleApi = {
   loadTemplate: id => ipcRenderer.invoke("template:load", id),
   deleteTemplate: id => ipcRenderer.invoke("template:delete", id),
   exportDocument: payload => ipcRenderer.invoke("document:export", payload),
-  printDocument: () => ipcRenderer.invoke("document:print")
+  printDocument: () => ipcRenderer.invoke("document:print"),
+  chooseExportFolder: () => ipcRenderer.invoke("document:choose-folder")
 };
 
 contextBridge.exposeInMainWorld("bundle", api);

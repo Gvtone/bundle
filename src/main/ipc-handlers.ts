@@ -6,7 +6,8 @@ import {
   loadTemplate,
   deleteTemplate
 } from "./template-store";
-import { buildDocx, sanitizeFilename } from "./document-store";
+import { buildDocx } from "./document-store";
+import { sanitizeFilename } from "../shared/sanitizeFilename";
 import type { ExportPayload } from "../shared/types";
 
 export function registerIpcHandlers() {
@@ -30,16 +31,23 @@ export function registerIpcHandlers() {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) throw new Error("No window found for export request");
 
-    const filename = sanitizeFilename(payload.templateName);
-    const { canceled, filePath } = await dialog.showSaveDialog(win, {
-      defaultPath: `${filename}.${payload.format}`,
-      filters:
-        payload.format === "pdf"
-          ? [{ name: "PDF", extensions: ["pdf"] }]
-          : [{ name: "Word Document", extensions: ["docx"] }]
-    });
-
-    if (canceled || !filePath) return { canceled: true };
+    let filePath: string;
+    if (payload.destinationPath) {
+      filePath = payload.destinationPath;
+    } else {
+      const filename = sanitizeFilename(payload.templateName);
+      const saveResult = await dialog.showSaveDialog(win, {
+        defaultPath: `${filename}.${payload.format}`,
+        filters:
+          payload.format === "pdf"
+            ? [{ name: "PDF", extensions: ["pdf"] }]
+            : [{ name: "Word Document", extensions: ["docx"] }]
+      });
+      if (saveResult.canceled || !saveResult.filePath) {
+        return { canceled: true };
+      }
+      filePath = saveResult.filePath;
+    }
 
     const buffer =
       payload.format === "pdf"
@@ -70,5 +78,18 @@ export function registerIpcHandlers() {
         }
       );
     });
+  });
+
+  ipcMain.handle("document:choose-folder", async event => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) throw new Error("No window found for folder picker request");
+
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ["openDirectory"]
+    });
+
+    const folderPath = filePaths[0];
+    if (canceled || !folderPath) return { canceled: true };
+    return { canceled: false, folderPath };
   });
 }
