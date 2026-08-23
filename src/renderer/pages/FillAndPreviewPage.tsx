@@ -54,7 +54,9 @@ function FillAndPreviewContent() {
     listValues,
     setListRows,
     currentRow,
-    setCurrentRow
+    setCurrentRow,
+    clearField,
+    clearAll
   } = useFillValues();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
@@ -360,6 +362,7 @@ function FillAndPreviewContent() {
               }
               listText={(listValues[p.id] ?? []).join("\n")}
               onListTextChange={text => setListRows(p.id, text)}
+              onClear={() => clearField(p.id)}
             />
           ))}
         </div>
@@ -387,6 +390,10 @@ function FillAndPreviewContent() {
               </Button>
             </div>
           </div>
+
+          <Button size="xs" variant="muted" onClick={clearAll}>
+            Clear all
+          </Button>
         </div>
       </aside>
 

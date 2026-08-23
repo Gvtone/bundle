@@ -9,7 +9,12 @@ const api: BundleApi = {
   deleteTemplate: id => ipcRenderer.invoke("template:delete", id),
   exportDocument: payload => ipcRenderer.invoke("document:export", payload),
   printDocument: () => ipcRenderer.invoke("document:print"),
-  chooseExportFolder: () => ipcRenderer.invoke("document:choose-folder")
+  chooseExportFolder: () => ipcRenderer.invoke("document:choose-folder"),
+  saveFillValues: (templateId, snapshot) =>
+    ipcRenderer.invoke("values:save", templateId, snapshot),
+  loadFillValues: templateId => ipcRenderer.invoke("values:load", templateId),
+  clearFillValues: templateId =>
+    ipcRenderer.invoke("values:clear", templateId)
 };
 
 contextBridge.exposeInMainWorld("bundle", api);

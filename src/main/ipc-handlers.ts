@@ -6,9 +6,14 @@ import {
   loadTemplate,
   deleteTemplate
 } from "./template-store";
+import {
+  saveFillValues,
+  loadFillValues,
+  clearFillValues
+} from "./fill-values-store";
 import { buildDocx } from "./document-store";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
-import type { ExportPayload } from "../shared/types";
+import type { ExportPayload, FillValuesSnapshot } from "../shared/types";
 
 export function registerIpcHandlers() {
   ipcMain.handle("template:save", async (_event, template, content) => {
@@ -91,5 +96,20 @@ export function registerIpcHandlers() {
     const folderPath = filePaths[0];
     if (canceled || !folderPath) return { canceled: true };
     return { canceled: false, folderPath };
+  });
+
+  ipcMain.handle(
+    "values:save",
+    async (_event, templateId: string, snapshot: FillValuesSnapshot) => {
+      return saveFillValues(templateId, snapshot);
+    }
+  );
+
+  ipcMain.handle("values:load", async (_event, templateId: string) => {
+    return loadFillValues(templateId);
+  });
+
+  ipcMain.handle("values:clear", async (_event, templateId: string) => {
+    return clearFillValues(templateId);
   });
 }

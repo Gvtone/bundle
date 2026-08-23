@@ -47,6 +47,12 @@ export interface ChooseFolderResult {
   folderPath?: string;
 }
 
+export interface FillValuesSnapshot {
+  values: Record<string, string>;
+  listEnabled: Record<string, boolean>;
+  listValues: Record<string, string[]>;
+}
+
 export interface BundleApi {
   saveTemplate: (
     template: Partial<Template>,
@@ -58,4 +64,10 @@ export interface BundleApi {
   exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
   printDocument: () => Promise<void>;
   chooseExportFolder: () => Promise<ChooseFolderResult>;
+  saveFillValues: (
+    templateId: string,
+    snapshot: FillValuesSnapshot
+  ) => Promise<void>;
+  loadFillValues: (templateId: string) => Promise<FillValuesSnapshot | null>;
+  clearFillValues: (templateId: string) => Promise<void>;
 }

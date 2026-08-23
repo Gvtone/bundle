@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useParams } from "react-router";
 
 interface FillValuesContextValue {
   values: Record<string, string>;
@@ -11,17 +12,22 @@ interface FillValuesContextValue {
   setCurrentRow: (row: number) => void;
   isCapturingSnapshot: boolean;
   setIsCapturingSnapshot: (value: boolean) => void;
+  clearField: (id: string) => void;
+  clearAll: () => void;
 }
 
 const FillValuesContext = createContext<FillValuesContextValue | undefined>(
   undefined
 );
 
+const SAVE_DEBOUNCE_MS = 500;
+
 export function FillValuesProvider({
   children
 }: {
   children: React.ReactNode;
 }) {
+  const { templateId } = useParams();
   const [singleValues, setSingleValues] = useState<Record<string, string>>(
     {}
   );
@@ -33,6 +39,51 @@ export function FillValuesProvider({
   >({});
   const [currentRow, setCurrentRow] = useState(0);
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Reset in-memory state and load the new template's persisted snapshot
+  // whenever the route's templateId changes, so switching templates doesn't
+  // briefly show the previous template's values.
+  useEffect(() => {
+    setLoaded(false);
+    setSingleValues({});
+    setListEnabledState({});
+    setListValuesState({});
+    setCurrentRow(0);
+
+    if (!templateId) return;
+
+    let canceled = false;
+    window.bundle.loadFillValues(templateId).then(snapshot => {
+      if (canceled) return;
+      if (snapshot) {
+        setSingleValues(snapshot.values);
+        setListEnabledState(snapshot.listEnabled);
+        setListValuesState(snapshot.listValues);
+      }
+      setLoaded(true);
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [templateId]);
+
+  // Debounced autosave — skipped until the initial load completes so we
+  // never overwrite a saved snapshot with the pre-load empty state.
+  useEffect(() => {
+    if (!templateId || !loaded) return;
+
+    const timer = setTimeout(() => {
+      window.bundle.saveFillValues(templateId, {
+        values: singleValues,
+        listEnabled,
+        listValues
+      });
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [templateId, loaded, singleValues, listEnabled, listValues]);
 
   const setValue = useCallback(
     (id: string, value: string) => {
@@ -73,6 +124,25 @@ export function FillValuesProvider({
     setListValuesState(prev => ({ ...prev, [id]: rawText.split("\n") }));
   }, []);
 
+  const clearField = useCallback(
+    (id: string) => {
+      setSingleValues(prev => ({ ...prev, [id]: "" }));
+      if (listEnabled[id]) {
+        setListValuesState(prev => ({ ...prev, [id]: [""] }));
+        setCurrentRow(0);
+      }
+    },
+    [listEnabled]
+  );
+
+  const clearAll = useCallback(() => {
+    setSingleValues({});
+    setListEnabledState({});
+    setListValuesState({});
+    setCurrentRow(0);
+    if (templateId) window.bundle.clearFillValues(templateId);
+  }, [templateId]);
+
   const values: Record<string, string> = {};
   for (const id of new Set([
     ...Object.keys(singleValues),
@@ -95,7 +165,9 @@ export function FillValuesProvider({
         currentRow,
         setCurrentRow,
         isCapturingSnapshot,
-        setIsCapturingSnapshot
+        setIsCapturingSnapshot,
+        clearField,
+        clearAll
       }}
     >
       {children}
