@@ -1,3 +1,5 @@
+import type { PageLayout } from "./pageLayout";
+
 export type DateFormatKey = "long";
 
 export interface PlaceholderStyle {
@@ -24,6 +26,7 @@ export interface Template {
   createdAt: string;
   updatedAt: string;
   placeholders: Placeholder[];
+  pageLayout?: PageLayout;
 }
 
 export type ExportFormat = "pdf" | "docx";
@@ -34,6 +37,7 @@ export interface ExportPayload {
   content: unknown;
   placeholders: Placeholder[];
   values: Record<string, string>;
+  pageLayout: PageLayout;
   destinationPath?: string; // when set, document:export writes here directly, skipping its save dialog
 }
 

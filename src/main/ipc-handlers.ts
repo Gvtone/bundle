@@ -14,6 +14,7 @@ import {
 import { savePreset, listPresets, deletePreset } from "./preset-store";
 import { buildDocx } from "./document-store";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
+import { resolvePageDimensions } from "../shared/pageLayout";
 import type { ExportPayload, FillValuesSnapshot } from "../shared/types";
 
 export function registerIpcHandlers() {
@@ -55,10 +56,14 @@ export function registerIpcHandlers() {
       filePath = saveResult.filePath;
     }
 
+    const pageDimensions = resolvePageDimensions(payload.pageLayout);
     const buffer =
       payload.format === "pdf"
         ? await win.webContents.printToPDF({
-            pageSize: "Letter",
+            pageSize: {
+              width: pageDimensions.width / 96,
+              height: pageDimensions.height / 96
+            },
             margins: { top: 0, bottom: 0, left: 0, right: 0 },
             printBackground: true
           })

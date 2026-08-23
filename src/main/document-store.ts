@@ -8,12 +8,10 @@ import {
 } from "docx";
 import type { ExportPayload, Placeholder } from "../shared/types";
 import { DATE_FORMATS } from "../shared/dateFormats";
+import { resolvePageDimensions } from "../shared/pageLayout";
 
 // 1px @ 96dpi = 1/96 inch = 1440/96 = 15 twips (docx's unit).
 const TWIPS_PER_PX = 15;
-const PAGE_WIDTH_TWIPS = 816 * TWIPS_PER_PX;
-const PAGE_HEIGHT_TWIPS = 1056 * TWIPS_PER_PX;
-const MARGIN_TWIPS = 96 * TWIPS_PER_PX;
 const ORDERED_LIST_REFERENCE = "ordered-list";
 const MAX_LIST_DEPTH = 3;
 const DEFAULT_RUN_SIZE_HALF_POINTS = 24; // 12pt fallback for text with no explicit size mark
@@ -218,6 +216,11 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
     payload.values
   );
 
+  const dims = resolvePageDimensions(payload.pageLayout);
+  const pageWidthTwips = dims.width * TWIPS_PER_PX;
+  const pageHeightTwips = dims.height * TWIPS_PER_PX;
+  const marginTwips = dims.margins * TWIPS_PER_PX;
+
   const document = new Document({
     styles: {
       default: {
@@ -243,12 +246,12 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
       {
         properties: {
           page: {
-            size: { width: PAGE_WIDTH_TWIPS, height: PAGE_HEIGHT_TWIPS },
+            size: { width: pageWidthTwips, height: pageHeightTwips },
             margin: {
-              top: MARGIN_TWIPS,
-              right: MARGIN_TWIPS,
-              bottom: MARGIN_TWIPS,
-              left: MARGIN_TWIPS
+              top: marginTwips,
+              right: marginTwips,
+              bottom: marginTwips,
+              left: marginTwips
             }
           }
         },

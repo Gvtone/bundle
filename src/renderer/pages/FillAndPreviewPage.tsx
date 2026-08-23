@@ -21,13 +21,7 @@ import {
   useFillValues
 } from "@/renderer/context/FillValuesContext";
 import type { ExportFormat, Preset } from "@/shared/types";
-
-// Matches EditTemplatePage's Letter-size default (816x1056px @ 96dpi, 96px
-// margins). Page size/margins aren't persisted anywhere yet, so there is
-// nothing to read back — this just mirrors the editor's own default.
-const PAGE_WIDTH = 816;
-const PAGE_HEIGHT = 1056;
-const MARGINS = 96;
+import { DEFAULT_PAGE_LAYOUT, resolvePageDimensions } from "@/shared/pageLayout";
 
 function FillAndPreviewPage() {
   return (
@@ -64,6 +58,9 @@ function FillAndPreviewContent() {
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
   const [presets, setPresets] = useState<Preset[]>([]);
+
+  const pageLayout = meta?.pageLayout ?? DEFAULT_PAGE_LAYOUT;
+  const pageDimensions = resolvePageDimensions(pageLayout);
   const [pendingAction, setPendingAction] = useState<
     "export-current" | "export-all" | "print-current" | "print-all" | null
   >(null);
@@ -137,7 +134,8 @@ function FillAndPreviewContent() {
         format,
         content,
         placeholders: meta.placeholders,
-        values
+        values,
+        pageLayout
       });
       if (!result.canceled) toast.success(`Exported ${format.toUpperCase()}`);
     } catch (err) {
@@ -196,6 +194,7 @@ function FillAndPreviewContent() {
           content,
           placeholders: meta.placeholders,
           values: rowValues,
+          pageLayout,
           destinationPath: `${folderPath}/${filename}`
         });
         if (result.canceled) {
@@ -448,9 +447,9 @@ function FillAndPreviewContent() {
               ref={paperRef}
               className="bg-white mx-auto shadow-md print:shadow-none print:mx-0"
               style={{
-                width: `${PAGE_WIDTH}px`,
-                minHeight: `${PAGE_HEIGHT}px`,
-                padding: `${MARGINS}px`
+                width: `${pageDimensions.width}px`,
+                minHeight: `${pageDimensions.height}px`,
+                padding: `${pageDimensions.margins}px`
               }}
             >
               <EditorContent

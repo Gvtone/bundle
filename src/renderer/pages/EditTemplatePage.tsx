@@ -27,17 +27,11 @@ import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension
 import PlaceholderChip from "../components/edit-template/PlaceholderChip";
 import { slugify } from "@/renderer/utils/slugify";
 import type { Placeholder } from "@/shared/types";
-
-// Page size definitions — width/height in pixels at 96dpi (standard screen)
-const PAGE_SIZES = {
-  letter: { width: 816, height: 1056 },
-  a4: { width: 794, height: 1123 },
-  legal: { width: 816, height: 1344 },
-  folio: { width: 816, height: 1248 },
-  custom: { width: 816, height: 1056 }
-} as const;
-
-type PageSizeKey = keyof typeof PAGE_SIZES;
+import {
+  DEFAULT_PAGE_LAYOUT,
+  resolvePageDimensions,
+  type PageSizeKey
+} from "@/shared/pageLayout";
 
 // Safe font list — universally installed, won't break on recipient's machine
 const FONT_OPTIONS = [
@@ -76,16 +70,15 @@ function EditTemplatePage() {
     save,
     setSaveHandler,
     updatePlaceholders,
+    updatePageLayout,
     setInsertPlaceholderHandler
   } = useTemplate();
   const { refetch } = useTemplates();
-  const [pageSize, setPageSize] = useState<PageSizeKey>("letter");
-  const [margins, setMargins] = useState(96);
-  const [customSize, setCustomSize] = useState({ width: 816, height: 1056 });
   const [deleteTarget, setDeleteTarget] = useState<Placeholder | null>(null);
 
-  const currentPageSize =
-    pageSize === "custom" ? customSize : PAGE_SIZES[pageSize];
+  const pageLayout = meta?.pageLayout ?? DEFAULT_PAGE_LAYOUT;
+  const { size: pageSize, margins } = pageLayout;
+  const currentPageSize = resolvePageDimensions(pageLayout);
 
   const editor = useEditor(
     {
@@ -379,7 +372,12 @@ function EditTemplatePage() {
           {/* Page size */}
           <select
             value={pageSize}
-            onChange={e => setPageSize(e.target.value as PageSizeKey)}
+            onChange={e =>
+              updatePageLayout(prev => ({
+                ...prev,
+                size: e.target.value as PageSizeKey
+              }))
+            }
             className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-24 focus:outline-none"
           >
             <option value="letter">Letter</option>
@@ -393,11 +391,11 @@ function EditTemplatePage() {
             <div className="flex items-center gap-1 text-sm">
               <input
                 type="number"
-                value={Math.round((customSize.width / 96) * 100) / 100}
+                value={Math.round((currentPageSize.width / 96) * 100) / 100}
                 onChange={e =>
-                  setCustomSize(s => ({
-                    ...s,
-                    width: Number(e.target.value) * 96
+                  updatePageLayout(prev => ({
+                    ...prev,
+                    customWidth: Number(e.target.value) * 96
                   }))
                 }
                 step="0.1"
@@ -408,11 +406,11 @@ function EditTemplatePage() {
               <span className="text-xs text-muted-foreground">×</span>
               <input
                 type="number"
-                value={Math.round((customSize.height / 96) * 100) / 100}
+                value={Math.round((currentPageSize.height / 96) * 100) / 100}
                 onChange={e =>
-                  setCustomSize(s => ({
-                    ...s,
-                    height: Number(e.target.value) * 96
+                  updatePageLayout(prev => ({
+                    ...prev,
+                    customHeight: Number(e.target.value) * 96
                   }))
                 }
                 step="0.1"
@@ -430,7 +428,12 @@ function EditTemplatePage() {
             <input
               type="number"
               value={Math.round((margins / 96) * 100) / 100}
-              onChange={e => setMargins(Number(e.target.value) * 96)}
+              onChange={e =>
+                updatePageLayout(prev => ({
+                  ...prev,
+                  margins: Number(e.target.value) * 96
+                }))
+              }
               step="0.25"
               min="0"
               max="3"
