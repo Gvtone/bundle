@@ -16,6 +16,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
 import { FontSize } from "@/renderer/lib/font-size-extension";
+import { ParagraphSpacing } from "@/renderer/lib/paragraph-spacing-extension";
 import PlaceholderCard from "../components/edit-template/PlaceholderCard";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
@@ -61,6 +62,22 @@ const FONT_SIZE_OPTIONS = [
   "72"
 ];
 
+const LINE_HEIGHT_OPTIONS = [
+  { label: "Single", value: "1" },
+  { label: "1.15", value: "1.15" },
+  { label: "1.5", value: "1.5" },
+  { label: "Double", value: "2" }
+];
+
+const PARAGRAPH_SPACING_OPTIONS = [
+  { label: "None", value: "0pt" },
+  { label: "6pt", value: "6pt" },
+  { label: "8pt", value: "8pt" },
+  { label: "12pt", value: "12pt" },
+  { label: "18pt", value: "18pt" },
+  { label: "24pt", value: "24pt" }
+];
+
 function EditTemplatePage() {
   const {
     meta,
@@ -88,6 +105,7 @@ function EditTemplatePage() {
         TextStyle,
         NormalizedFontFamily,
         FontSize,
+        ParagraphSpacing,
         createPlaceholderExtension(PlaceholderChip)
       ],
       content: (content as object) ?? {
@@ -113,7 +131,13 @@ function EditTemplatePage() {
       alignJustify: ctx.editor?.isActive({ textAlign: "justify" }),
       // Read current font/size from selection for showing in dropdowns
       currentFont: ctx.editor?.getAttributes("textStyle")["fontFamily"] ?? "",
-      currentSize: ctx.editor?.getAttributes("textStyle")["fontSize"] ?? ""
+      currentSize: ctx.editor?.getAttributes("textStyle")["fontSize"] ?? "",
+      currentLineHeight: ctx.editor?.isActive("heading")
+        ? (ctx.editor?.getAttributes("heading")["lineHeight"] ?? "")
+        : (ctx.editor?.getAttributes("paragraph")["lineHeight"] ?? ""),
+      currentSpacing: ctx.editor?.isActive("heading")
+        ? (ctx.editor?.getAttributes("heading")["spacingAfter"] ?? "")
+        : (ctx.editor?.getAttributes("paragraph")["spacingAfter"] ?? "")
     })
   });
 
@@ -243,6 +267,16 @@ function EditTemplatePage() {
     }
   }
 
+  function handleLineHeightChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    editor?.chain().focus().setLineHeight(value || null).run();
+  }
+
+  function handleParagraphSpacingChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    editor?.chain().focus().setParagraphSpacing(value || null).run();
+  }
+
   return (
     <div className="flex w-full h-full overflow-hidden">
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -303,6 +337,34 @@ function EditTemplatePage() {
             {FONT_SIZE_OPTIONS.map(s => (
               <option key={s} value={s}>
                 {s}pt
+              </option>
+            ))}
+          </select>
+
+          {/* Line spacing */}
+          <select
+            value={editorState?.currentLineHeight ?? ""}
+            onChange={handleLineHeightChange}
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-28 focus:outline-none"
+          >
+            <option value="">Line spacing</option>
+            {LINE_HEIGHT_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Paragraph spacing */}
+          <select
+            value={editorState?.currentSpacing ?? ""}
+            onChange={handleParagraphSpacingChange}
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-32 focus:outline-none"
+          >
+            <option value="">Paragraph spacing</option>
+            {PARAGRAPH_SPACING_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>

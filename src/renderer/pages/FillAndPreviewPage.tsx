@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
 import { FontSize } from "@/renderer/lib/font-size-extension";
+import { ParagraphSpacing } from "@/renderer/lib/paragraph-spacing-extension";
 import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension";
 import FilledPlaceholderChip from "../components/fill-and-preview/FilledPlaceholderChip";
 import Button from "../components/ui/Button";
@@ -343,6 +344,7 @@ function FillAndPreviewContent() {
         TextStyle,
         NormalizedFontFamily,
         FontSize,
+        ParagraphSpacing,
         createPlaceholderExtension(FilledPlaceholderChip)
       ],
       content: (content as object) ?? {
