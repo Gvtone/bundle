@@ -12,6 +12,7 @@ import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ValueInputCard from "../components/fill-and-preview/ValueInputCard";
 import RowSelector from "../components/fill-and-preview/RowSelector";
+import PresetDropdown from "../components/fill-and-preview/PresetDropdown";
 import { buildBulkFilename } from "@/renderer/utils/bulkFilename";
 import { cn } from "@/renderer/utils/utils";
 import { useTemplate } from "@/renderer/context/TemplateContext";
@@ -19,7 +20,7 @@ import {
   FillValuesProvider,
   useFillValues
 } from "@/renderer/context/FillValuesContext";
-import type { ExportFormat } from "@/shared/types";
+import type { ExportFormat, Preset } from "@/shared/types";
 
 // Matches EditTemplatePage's Letter-size default (816x1056px @ 96dpi, 96px
 // margins). Page size/margins aren't persisted anywhere yet, so there is
@@ -56,10 +57,13 @@ function FillAndPreviewContent() {
     currentRow,
     setCurrentRow,
     clearField,
-    clearAll
+    clearAll,
+    applySnapshot,
+    getSnapshot
   } = useFillValues();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
+  const [presets, setPresets] = useState<Preset[]>([]);
   const [pendingAction, setPendingAction] = useState<
     "export-current" | "export-all" | "print-current" | "print-all" | null
   >(null);
@@ -94,6 +98,25 @@ function FillAndPreviewContent() {
     } else if (!values[p.id]) {
       blankCellsAllRows.push(p.label);
     }
+  }
+
+  useEffect(() => {
+    if (!meta) return;
+    window.bundle.listPresets(meta.id).then(setPresets);
+  }, [meta]);
+
+  function handleSaveNewPreset(name: string) {
+    if (!meta) return;
+    window.bundle
+      .savePreset(meta.id, name, getSnapshot())
+      .then(preset => setPresets(prev => [preset, ...prev]));
+  }
+
+  function handleDeletePreset(presetId: string) {
+    if (!meta) return;
+    window.bundle
+      .deletePreset(meta.id, presetId)
+      .then(() => setPresets(prev => prev.filter(p => p.id !== presetId)));
   }
 
   function waitForPaint() {
@@ -350,6 +373,13 @@ function FillAndPreviewContent() {
         </div>
 
         <div className="flex flex-col gap-4 p-4 flex-1 overflow-y-auto">
+          <PresetDropdown
+            presets={presets}
+            onLoad={preset => applySnapshot(preset.snapshot)}
+            onSaveNew={handleSaveNewPreset}
+            onDelete={handleDeletePreset}
+          />
+
           {(meta?.placeholders ?? []).map(p => (
             <ValueInputCard
               key={p.id}

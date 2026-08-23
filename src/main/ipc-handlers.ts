@@ -11,6 +11,7 @@ import {
   loadFillValues,
   clearFillValues
 } from "./fill-values-store";
+import { savePreset, listPresets, deletePreset } from "./preset-store";
 import { buildDocx } from "./document-store";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
 import type { ExportPayload, FillValuesSnapshot } from "../shared/types";
@@ -112,4 +113,27 @@ export function registerIpcHandlers() {
   ipcMain.handle("values:clear", async (_event, templateId: string) => {
     return clearFillValues(templateId);
   });
+
+  ipcMain.handle(
+    "preset:save",
+    async (
+      _event,
+      templateId: string,
+      name: string,
+      snapshot: FillValuesSnapshot
+    ) => {
+      return savePreset(templateId, name, snapshot);
+    }
+  );
+
+  ipcMain.handle("preset:list", async (_event, templateId: string) => {
+    return listPresets(templateId);
+  });
+
+  ipcMain.handle(
+    "preset:delete",
+    async (_event, templateId: string, presetId: string) => {
+      return deletePreset(templateId, presetId);
+    }
+  );
 }

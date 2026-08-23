@@ -53,6 +53,13 @@ export interface FillValuesSnapshot {
   listValues: Record<string, string[]>;
 }
 
+export interface Preset {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: FillValuesSnapshot;
+}
+
 export interface BundleApi {
   saveTemplate: (
     template: Partial<Template>,
@@ -70,4 +77,11 @@ export interface BundleApi {
   ) => Promise<void>;
   loadFillValues: (templateId: string) => Promise<FillValuesSnapshot | null>;
   clearFillValues: (templateId: string) => Promise<void>;
+  savePreset: (
+    templateId: string,
+    name: string,
+    snapshot: FillValuesSnapshot
+  ) => Promise<Preset>;
+  listPresets: (templateId: string) => Promise<Preset[]>;
+  deletePreset: (templateId: string, presetId: string) => Promise<void>;
 }

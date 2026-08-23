@@ -1,3 +1,4 @@
+import type { FillValuesSnapshot } from "@/shared/types";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router";
 
@@ -14,6 +15,8 @@ interface FillValuesContextValue {
   setIsCapturingSnapshot: (value: boolean) => void;
   clearField: (id: string) => void;
   clearAll: () => void;
+  applySnapshot: (snapshot: FillValuesSnapshot) => void;
+  getSnapshot: () => FillValuesSnapshot;
 }
 
 const FillValuesContext = createContext<FillValuesContextValue | undefined>(
@@ -135,6 +138,22 @@ export function FillValuesProvider({
     [listEnabled]
   );
 
+  const applySnapshot = useCallback((snapshot: FillValuesSnapshot) => {
+    setSingleValues(snapshot.values);
+    setListEnabledState(snapshot.listEnabled);
+    setListValuesState(snapshot.listValues);
+    setCurrentRow(0);
+  }, []);
+
+  const getSnapshot = useCallback(
+    (): FillValuesSnapshot => ({
+      values: singleValues,
+      listEnabled,
+      listValues
+    }),
+    [singleValues, listEnabled, listValues]
+  );
+
   const clearAll = useCallback(() => {
     setSingleValues({});
     setListEnabledState({});
@@ -167,7 +186,9 @@ export function FillValuesProvider({
         isCapturingSnapshot,
         setIsCapturingSnapshot,
         clearField,
-        clearAll
+        clearAll,
+        applySnapshot,
+        getSnapshot
       }}
     >
       {children}

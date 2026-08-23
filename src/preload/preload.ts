@@ -14,7 +14,12 @@ const api: BundleApi = {
     ipcRenderer.invoke("values:save", templateId, snapshot),
   loadFillValues: templateId => ipcRenderer.invoke("values:load", templateId),
   clearFillValues: templateId =>
-    ipcRenderer.invoke("values:clear", templateId)
+    ipcRenderer.invoke("values:clear", templateId),
+  savePreset: (templateId, name, snapshot) =>
+    ipcRenderer.invoke("preset:save", templateId, name, snapshot),
+  listPresets: templateId => ipcRenderer.invoke("preset:list", templateId),
+  deletePreset: (templateId, presetId) =>
+    ipcRenderer.invoke("preset:delete", templateId, presetId)
 };
 
 contextBridge.exposeInMainWorld("bundle", api);
