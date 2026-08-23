@@ -50,7 +50,7 @@ function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col bg-card border-r border-border shrink-0 h-full p-4 transition-all duration-200",
+        "flex flex-col bg-card border-r border-border shrink-0 h-full p-4 transition-all duration-200 print:hidden",
         isSidebarOpen ? "w-64" : "w-fit"
       )}
     >

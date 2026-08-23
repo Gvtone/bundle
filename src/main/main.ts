@@ -41,7 +41,10 @@ async function createWindow() {
   }
 
   mainWindow.webContents.openDevTools();
-  mainWindow.on("close", () => saveWindowState(mainWindow));
+  mainWindow.on("close", e => {
+    e.preventDefault();
+    saveWindowState(mainWindow).finally(() => mainWindow.destroy());
+  });
 }
 
 // This method will be called when Electron has finished

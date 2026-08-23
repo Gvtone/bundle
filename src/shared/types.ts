@@ -1,6 +1,9 @@
+export type DateFormatKey = "long";
+
 export interface PlaceholderStyle {
   bold: boolean;
   italic: boolean;
+  underline: boolean;
   fontSize?: number;
   fontFamily?: string;
 }
@@ -11,6 +14,7 @@ export interface Placeholder {
   label: string;
   type: "text" | "date" | "paragraph";
   style: PlaceholderStyle;
+  dateFormat?: DateFormatKey;
 }
 
 export interface Template {
@@ -22,6 +26,27 @@ export interface Template {
   placeholders: Placeholder[];
 }
 
+export type ExportFormat = "pdf" | "docx";
+
+export interface ExportPayload {
+  templateName: string;
+  format: ExportFormat;
+  content: unknown;
+  placeholders: Placeholder[];
+  values: Record<string, string>;
+  destinationPath?: string; // when set, document:export writes here directly, skipping its save dialog
+}
+
+export interface ExportResult {
+  canceled: boolean;
+  filePath?: string;
+}
+
+export interface ChooseFolderResult {
+  canceled: boolean;
+  folderPath?: string;
+}
+
 export interface BundleApi {
   saveTemplate: (
     template: Partial<Template>,
@@ -30,4 +55,7 @@ export interface BundleApi {
   listTemplates: () => Promise<Template[]>;
   loadTemplate: (id: string) => Promise<{ meta: Template; content: unknown }>;
   deleteTemplate: (id: string) => Promise<void>;
+  exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
+  printDocument: () => Promise<void>;
+  chooseExportFolder: () => Promise<ChooseFolderResult>;
 }

@@ -7,7 +7,7 @@ function TitleBar() {
 
   return (
     <header
-      className="flex items-center bg-card border-b border-border sticky top-0 z-50 h-10 p-2"
+      className="flex items-center bg-card border-b border-border sticky top-0 z-50 h-10 p-2 print:hidden"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div className="flex items-center justify-between mr-32 w-full">

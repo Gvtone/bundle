@@ -1,5 +1,6 @@
 import Button from "../ui/Button";
 import LinkButton from "../ui/LinkButton";
+import ActionMenuButton from "./ActionMenuButton";
 import { useLocation, useParams } from "react-router";
 import { ExportIcon, PrinterIcon } from "@phosphor-icons/react";
 import { useTemplate } from "@/renderer/context/TemplateContext";
@@ -7,11 +8,18 @@ import { useTemplate } from "@/renderer/context/TemplateContext";
 function MainHeader() {
   const { templateId } = useParams();
   const { pathname } = useLocation();
-  const { meta } = useTemplate();
+  const {
+    meta,
+    save,
+    insertPlaceholder,
+    exportHandler,
+    printHandler,
+    bulkExportState
+  } = useTemplate();
   const isEdit = pathname.endsWith("/edit");
 
   return (
-    <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2">
+    <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2 print:hidden">
       <div className="flex flex-col z-10">
         <h2 className="text-sm font-semibold">{meta?.name ?? "Loading..."}</h2>
         <p className="text-xs text-subtle-foreground">
@@ -23,26 +31,47 @@ function MainHeader() {
       <div className="flex gap-2 z-10">
         {isEdit ? (
           <>
-            <Button size="sm" className="text-xs items-center">
+            <Button
+              size="sm"
+              className="text-xs items-center"
+              onClick={() => insertPlaceholder?.()}
+              disabled={!insertPlaceholder}
+            >
               <span className="font-bundle-mono">{"{·}"}</span>
               <span className="leading-0 max-md:hidden">New placeholder</span>
             </Button>
 
-            <Button size="sm" variant="secondary">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => save?.()}
+              disabled={!save}
+            >
               Save
             </Button>
           </>
         ) : (
           <>
-            <Button size="sm" className="text-xs items-center">
-              <PrinterIcon />
-              Print
-            </Button>
+            <ActionMenuButton
+              label="Print"
+              icon={<PrinterIcon />}
+              primaryHandler={printHandler}
+              allHandler={bulkExportState.printAllHandler}
+              allDisabledReason={bulkExportState.rowMismatchMessage}
+              showMenu={bulkExportState.hasListFields}
+              rowCount={bulkExportState.rowCount}
+            />
 
-            <Button size="sm" variant="secondary">
-              <ExportIcon />
-              Export
-            </Button>
+            <ActionMenuButton
+              label="Export"
+              icon={<ExportIcon />}
+              variant="secondary"
+              primaryHandler={exportHandler}
+              allHandler={bulkExportState.exportAllHandler}
+              allDisabledReason={bulkExportState.rowMismatchMessage}
+              showMenu={bulkExportState.hasListFields}
+              rowCount={bulkExportState.rowCount}
+            />
           </>
         )}
       </div>
