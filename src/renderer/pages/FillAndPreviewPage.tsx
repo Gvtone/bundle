@@ -1,19 +1,14 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import TextAlign from "@tiptap/extension-text-align";
-import { TextStyle } from "@tiptap/extension-text-style";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
-import { FontSize } from "@/renderer/lib/font-size-extension";
-import { ParagraphSpacing } from "@/renderer/lib/paragraph-spacing-extension";
-import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension";
-import FilledPlaceholderChip from "../components/fill-and-preview/FilledPlaceholderChip";
+import { createFillPreviewExtensions } from "@/renderer/lib/fill-preview-extensions";
+import { usePageSlices } from "@/renderer/hooks/usePageSlices";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ValueInputCard from "../components/fill-and-preview/ValueInputCard";
 import RowSelector from "../components/fill-and-preview/RowSelector";
 import PresetDropdown from "../components/fill-and-preview/PresetDropdown";
+import PreviewPageSheet from "../components/fill-and-preview/PreviewPageSheet";
 import { buildBulkFilename } from "@/renderer/utils/bulkFilename";
 import { cn } from "@/renderer/utils/utils";
 import { useTemplate } from "@/renderer/context/TemplateContext";
@@ -338,15 +333,7 @@ function FillAndPreviewContent() {
 
   const editor = useEditor(
     {
-      extensions: [
-        StarterKit,
-        TextAlign.configure({ types: ["heading", "paragraph"] }),
-        TextStyle,
-        NormalizedFontFamily,
-        FontSize,
-        ParagraphSpacing,
-        createPlaceholderExtension(FilledPlaceholderChip)
-      ],
+      extensions: createFillPreviewExtensions(),
       content: (content as object) ?? {
         type: "doc",
         content: [{ type: "paragraph" }]
@@ -356,6 +343,9 @@ function FillAndPreviewContent() {
     },
     [content]
   );
+
+  const usableHeight = pageDimensions.height - 2 * pageDimensions.margins;
+  const pageSlices = usePageSlices(editor, content, usableHeight);
 
   return (
     <div className="flex w-full h-full print:h-auto">
@@ -443,22 +433,35 @@ function FillAndPreviewContent() {
           />
         )}
 
-        <div className="flex-1 overflow-auto bg-[#e8e5df] p-8 print:overflow-visible print:p-0 print:bg-white">
+        <div className="relative flex-1 overflow-auto bg-[#e8e5df] p-8 print:overflow-visible print:p-0 print:bg-white">
           {!loading && (
-            <div
-              ref={paperRef}
-              className="bg-white mx-auto shadow-md print:shadow-none print:mx-0"
-              style={{
-                width: `${pageDimensions.width}px`,
-                minHeight: `${pageDimensions.height}px`,
-                padding: `${pageDimensions.margins}px`
-              }}
-            >
-              <EditorContent
-                editor={editor}
-                className="outline-none min-h-full prose prose-sm max-w-none"
-              />
-            </div>
+            <>
+              <div
+                ref={paperRef}
+                className="absolute top-0 left-0 invisible bg-white mx-auto shadow-md print:static print:visible print:shadow-none print:mx-0"
+                style={{
+                  width: `${pageDimensions.width}px`,
+                  minHeight: `${pageDimensions.height}px`,
+                  padding: `${pageDimensions.margins}px`
+                }}
+              >
+                <EditorContent
+                  editor={editor}
+                  className="outline-none min-h-full prose prose-sm max-w-none"
+                />
+              </div>
+
+              <div className="print:hidden">
+                {pageSlices.map((slice, i) => (
+                  <PreviewPageSheet
+                    key={i}
+                    slice={slice}
+                    pageDimensions={pageDimensions}
+                    pageNumber={i + 1}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

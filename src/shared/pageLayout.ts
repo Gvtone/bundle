@@ -23,6 +23,8 @@ export const DEFAULT_PAGE_LAYOUT: PageLayout = {
   margins: 96
 };
 
+export const PAGE_GUTTER_PX = 32;
+
 export function resolvePageDimensions(layout: PageLayout): {
   width: number;
   height: number;
