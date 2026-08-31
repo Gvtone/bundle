@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import Button from "../ui/Button";
 import LinkButton from "../ui/LinkButton";
 import ActionMenuButton from "./ActionMenuButton";
 import { useLocation, useParams } from "react-router";
 import { ExportIcon, PrinterIcon } from "@phosphor-icons/react";
 import { useTemplate } from "@/renderer/context/TemplateContext";
+import { cn } from "@/renderer/utils/utils";
 
 function MainHeader() {
   const { templateId } = useParams();
@@ -14,14 +16,63 @@ function MainHeader() {
     insertPlaceholder,
     exportHandler,
     printHandler,
-    bulkExportState
+    bulkExportState,
+    updateMeta
   } = useTemplate();
   const isEdit = pathname.endsWith("/edit");
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  // Renaming is in-memory only (persisted on the next Save, same as
+  // placeholder label edits) — leaving the page mid-edit shouldn't leave a
+  // stale draft active for the next template.
+  useEffect(() => {
+    setIsEditingName(false);
+  }, [templateId]);
+
+  function startEditingName() {
+    if (!isEdit || !meta) return;
+    setNameDraft(meta.name);
+    setIsEditingName(true);
+  }
+
+  function commitNameEdit() {
+    const trimmed = nameDraft.trim();
+    if (trimmed) updateMeta(prev => ({ ...prev, name: trimmed }));
+    setIsEditingName(false);
+  }
 
   return (
     <div className="relative flex justify-between bg-background border-b border-border w-full px-4 py-2 print:hidden">
       <div className="flex flex-col z-10">
-        <h2 className="text-sm font-semibold">{meta?.name ?? "Loading..."}</h2>
+        {isEditingName ? (
+          <input
+            autoFocus
+            value={nameDraft}
+            onChange={e => setNameDraft(e.target.value)}
+            onFocus={e => e.target.select()}
+            onBlur={commitNameEdit}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitNameEdit();
+              }
+              if (e.key === "Escape") setIsEditingName(false);
+            }}
+            className="text-sm font-semibold bg-transparent border-b border-border focus:outline-none"
+          />
+        ) : (
+          <h2
+            className={cn(
+              "text-sm font-semibold",
+              isEdit && "cursor-text hover:text-muted-foreground"
+            )}
+            onClick={startEditingName}
+          >
+            {meta?.name ?? "Loading..."}
+          </h2>
+        )}
         <p className="text-xs text-subtle-foreground">
           {meta ? `${meta.category} · ${meta.placeholders.length} fields` : ""}
         </p>
