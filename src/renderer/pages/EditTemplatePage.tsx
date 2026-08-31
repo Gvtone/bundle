@@ -16,55 +16,45 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
 import { FontSize } from "@/renderer/lib/font-size-extension";
+import { ParagraphSpacing } from "@/renderer/lib/paragraph-spacing-extension";
 import PlaceholderCard from "../components/edit-template/PlaceholderCard";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension";
 import PlaceholderChip from "../components/edit-template/PlaceholderChip";
 import { slugify } from "@/renderer/utils/slugify";
 import type { Placeholder } from "@/shared/types";
+import {
+  DEFAULT_PAGE_LAYOUT,
+  resolvePageDimensions,
+  type PageSizeKey
+} from "@/shared/pageLayout";
+import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
+import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
+import {
+  DEFAULT_FONT_SIZE_PT,
+  DEFAULT_LINE_HEIGHT,
+  DEFAULT_PARAGRAPH_SPACING_PT
+} from "@/shared/documentDefaults";
 
-// Page size definitions — width/height in pixels at 96dpi (standard screen)
-const PAGE_SIZES = {
-  letter: { width: 816, height: 1056 },
-  a4: { width: 794, height: 1123 },
-  legal: { width: 816, height: 1344 },
-  folio: { width: 816, height: 1248 },
-  custom: { width: 816, height: 1056 }
-} as const;
-
-type PageSizeKey = keyof typeof PAGE_SIZES;
-
-// Safe font list — universally installed, won't break on recipient's machine
-const FONT_OPTIONS = [
-  { label: "Default", value: "" },
-  { label: "Arial", value: "Arial" },
-  { label: "Times New Roman", value: "Times New Roman" },
-  { label: "Calibri", value: "Calibri" },
-  { label: "Georgia", value: "Georgia" },
-  { label: "Courier New", value: "Courier New" }
+const LINE_HEIGHT_OPTIONS = [
+  { label: "Single", value: "1" },
+  { label: "1.15", value: "1.15" },
+  { label: "1.5", value: "1.5" },
+  { label: "Double", value: "2" }
 ];
 
-const FONT_SIZE_OPTIONS = [
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-  "14",
-  "16",
-  "18",
-  "20",
-  "24",
-  "28",
-  "32",
-  "36",
-  "48",
-  "72"
+const PARAGRAPH_SPACING_OPTIONS = [
+  { label: "None", value: "0pt" },
+  { label: "6pt", value: "6pt" },
+  { label: "8pt", value: "8pt" },
+  { label: "12pt", value: "12pt" },
+  { label: "18pt", value: "18pt" },
+  { label: "24pt", value: "24pt" }
 ];
 
 function EditTemplatePage() {
@@ -76,16 +66,16 @@ function EditTemplatePage() {
     save,
     setSaveHandler,
     updatePlaceholders,
+    updatePageLayout,
     setInsertPlaceholderHandler
   } = useTemplate();
   const { refetch } = useTemplates();
-  const [pageSize, setPageSize] = useState<PageSizeKey>("letter");
-  const [margins, setMargins] = useState(96);
-  const [customSize, setCustomSize] = useState({ width: 816, height: 1056 });
   const [deleteTarget, setDeleteTarget] = useState<Placeholder | null>(null);
 
-  const currentPageSize =
-    pageSize === "custom" ? customSize : PAGE_SIZES[pageSize];
+  const pageLayout = meta?.pageLayout ?? DEFAULT_PAGE_LAYOUT;
+  const { size: pageSize, margins } = pageLayout;
+  const currentPageSize = resolvePageDimensions(pageLayout);
+  const usableHeight = currentPageSize.height - 2 * currentPageSize.margins;
 
   const editor = useEditor(
     {
@@ -95,6 +85,7 @@ function EditTemplatePage() {
         TextStyle,
         NormalizedFontFamily,
         FontSize,
+        ParagraphSpacing,
         createPlaceholderExtension(PlaceholderChip)
       ],
       content: (content as object) ?? {
@@ -105,6 +96,8 @@ function EditTemplatePage() {
     },
     [content]
   );
+
+  const pageBreakLines = usePageBreakOverlay(editor, usableHeight);
 
   const editorState = useEditorState({
     editor,
@@ -120,7 +113,13 @@ function EditTemplatePage() {
       alignJustify: ctx.editor?.isActive({ textAlign: "justify" }),
       // Read current font/size from selection for showing in dropdowns
       currentFont: ctx.editor?.getAttributes("textStyle")["fontFamily"] ?? "",
-      currentSize: ctx.editor?.getAttributes("textStyle")["fontSize"] ?? ""
+      currentSize: ctx.editor?.getAttributes("textStyle")["fontSize"] ?? "",
+      currentLineHeight: ctx.editor?.isActive("heading")
+        ? (ctx.editor?.getAttributes("heading")["lineHeight"] ?? "")
+        : (ctx.editor?.getAttributes("paragraph")["lineHeight"] ?? ""),
+      currentSpacing: ctx.editor?.isActive("heading")
+        ? (ctx.editor?.getAttributes("heading")["spacingAfter"] ?? "")
+        : (ctx.editor?.getAttributes("paragraph")["spacingAfter"] ?? "")
     })
   });
 
@@ -232,22 +231,59 @@ function EditTemplatePage() {
     setDeleteTarget(null);
   }
 
+  // Native <select> elements steal DOM focus more disruptively than a
+  // same-page button, which can collapse the editor's selection (especially
+  // one spanning multiple list items) before the change handler runs.
+  // Capturing the range on mousedown (before that focus shift happens) lets
+  // us restore the actual highlighted range instead of trusting whatever
+  // editor.state.selection has become by the time onChange fires.
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
+
+  function captureSelection() {
+    if (!editor) return;
+    savedSelectionRef.current = {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to
+    };
+  }
+
+  function restoreSelectionChain() {
+    const chain = editor!.chain().focus();
+    return savedSelectionRef.current
+      ? chain.setTextSelection(savedSelectionRef.current)
+      : chain;
+  }
+
   function handleFontChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
     const value = e.target.value;
     if (!value) {
-      editor?.chain().focus().unsetFontFamily().run();
+      restoreSelectionChain().unsetFontFamily().run();
     } else {
-      editor?.chain().focus().setFontFamily(value).run();
+      restoreSelectionChain().setFontFamily(value).run();
     }
   }
 
   function handleSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
     const value = e.target.value;
     if (!value) {
-      editor?.chain().focus().unsetFontSize().run();
+      restoreSelectionChain().unsetFontSize().run();
     } else {
-      editor?.chain().focus().setFontSize(`${value}pt`).run();
+      restoreSelectionChain().setFontSize(`${value}pt`).run();
     }
+  }
+
+  function handleLineHeightChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
+    const value = e.target.value;
+    restoreSelectionChain().setLineHeight(value || null).run();
+  }
+
+  function handleParagraphSpacingChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
+    const value = e.target.value;
+    restoreSelectionChain().setParagraphSpacing(value || null).run();
   }
 
   return (
@@ -285,6 +321,7 @@ function EditTemplatePage() {
           {/* Font family */}
           <select
             value={editorState?.currentFont ?? ""}
+            onMouseDown={captureSelection}
             onChange={handleFontChange}
             className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
             style={{ fontFamily: editorState?.currentFont || "inherit" }}
@@ -303,13 +340,44 @@ function EditTemplatePage() {
           {/* Font size */}
           <select
             value={editorState?.currentSize?.replace("pt", "") ?? ""}
+            onMouseDown={captureSelection}
             onChange={handleSizeChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-20 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-28 focus:outline-none"
           >
-            <option value="">Size</option>
+            <option value="">{DEFAULT_FONT_SIZE_PT}pt (Default)</option>
             {FONT_SIZE_OPTIONS.map(s => (
               <option key={s} value={s}>
                 {s}pt
+              </option>
+            ))}
+          </select>
+
+          {/* Line spacing */}
+          <select
+            value={editorState?.currentLineHeight ?? ""}
+            onMouseDown={captureSelection}
+            onChange={handleLineHeightChange}
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-32 focus:outline-none"
+          >
+            <option value="">{DEFAULT_LINE_HEIGHT} (Default)</option>
+            {LINE_HEIGHT_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Paragraph spacing */}
+          <select
+            value={editorState?.currentSpacing ?? ""}
+            onMouseDown={captureSelection}
+            onChange={handleParagraphSpacingChange}
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
+          >
+            <option value="">{DEFAULT_PARAGRAPH_SPACING_PT}pt (Default)</option>
+            {PARAGRAPH_SPACING_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>
@@ -379,7 +447,12 @@ function EditTemplatePage() {
           {/* Page size */}
           <select
             value={pageSize}
-            onChange={e => setPageSize(e.target.value as PageSizeKey)}
+            onChange={e =>
+              updatePageLayout(prev => ({
+                ...prev,
+                size: e.target.value as PageSizeKey
+              }))
+            }
             className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-24 focus:outline-none"
           >
             <option value="letter">Letter</option>
@@ -393,11 +466,11 @@ function EditTemplatePage() {
             <div className="flex items-center gap-1 text-sm">
               <input
                 type="number"
-                value={Math.round((customSize.width / 96) * 100) / 100}
+                value={Math.round((currentPageSize.width / 96) * 100) / 100}
                 onChange={e =>
-                  setCustomSize(s => ({
-                    ...s,
-                    width: Number(e.target.value) * 96
+                  updatePageLayout(prev => ({
+                    ...prev,
+                    customWidth: Number(e.target.value) * 96
                   }))
                 }
                 step="0.1"
@@ -408,11 +481,11 @@ function EditTemplatePage() {
               <span className="text-xs text-muted-foreground">×</span>
               <input
                 type="number"
-                value={Math.round((customSize.height / 96) * 100) / 100}
+                value={Math.round((currentPageSize.height / 96) * 100) / 100}
                 onChange={e =>
-                  setCustomSize(s => ({
-                    ...s,
-                    height: Number(e.target.value) * 96
+                  updatePageLayout(prev => ({
+                    ...prev,
+                    customHeight: Number(e.target.value) * 96
                   }))
                 }
                 step="0.1"
@@ -430,7 +503,12 @@ function EditTemplatePage() {
             <input
               type="number"
               value={Math.round((margins / 96) * 100) / 100}
-              onChange={e => setMargins(Number(e.target.value) * 96)}
+              onChange={e =>
+                updatePageLayout(prev => ({
+                  ...prev,
+                  margins: Number(e.target.value) * 96
+                }))
+              }
               step="0.25"
               min="0"
               max="3"
@@ -442,15 +520,15 @@ function EditTemplatePage() {
 
         {/* Paper canvas */}
         {!loading && (
-          <div className="flex-1 overflow-auto bg-[#e8e5df] p-8">
+          <div className="flex-1 overflow-auto bg-background-sunken p-8">
             <div
-              className="bg-white mx-auto shadow-md"
+              className="relative bg-white mx-auto shadow-md"
               style={{
                 width: `${currentPageSize.width}px`,
                 minHeight: `${currentPageSize.height}px`,
                 padding: `${margins}px`
               }}
-              onClick={e => {
+              onMouseDown={e => {
                 if (e.target === e.currentTarget) {
                   editor?.commands.focus("end");
                 }
@@ -460,6 +538,19 @@ function EditTemplatePage() {
                 editor={editor}
                 className="outline-none min-h-full prose prose-sm max-w-none"
               />
+
+              {pageBreakLines.map((line, i) => (
+                <div
+                  key={i}
+                  className="absolute left-0 right-0 pointer-events-none"
+                  style={{ top: `${line.top + margins}px` }}
+                >
+                  <div className="border-t border-dashed border-subtle-foreground" />
+                  <div className="absolute -top-5 right-0 text-xs text-muted-foreground bg-white px-1">
+                    Page {i + 2}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -1,17 +1,14 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import TextAlign from "@tiptap/extension-text-align";
-import { TextStyle } from "@tiptap/extension-text-style";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
-import { FontSize } from "@/renderer/lib/font-size-extension";
-import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension";
-import FilledPlaceholderChip from "../components/fill-and-preview/FilledPlaceholderChip";
+import { createFillPreviewExtensions } from "@/renderer/lib/fill-preview-extensions";
+import { usePageSlices } from "@/renderer/hooks/usePageSlices";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ValueInputCard from "../components/fill-and-preview/ValueInputCard";
 import RowSelector from "../components/fill-and-preview/RowSelector";
+import PresetDropdown from "../components/fill-and-preview/PresetDropdown";
+import PreviewPageSheet from "../components/fill-and-preview/PreviewPageSheet";
 import { buildBulkFilename } from "@/renderer/utils/bulkFilename";
 import { cn } from "@/renderer/utils/utils";
 import { useTemplate } from "@/renderer/context/TemplateContext";
@@ -19,14 +16,8 @@ import {
   FillValuesProvider,
   useFillValues
 } from "@/renderer/context/FillValuesContext";
-import type { ExportFormat } from "@/shared/types";
-
-// Matches EditTemplatePage's Letter-size default (816x1056px @ 96dpi, 96px
-// margins). Page size/margins aren't persisted anywhere yet, so there is
-// nothing to read back — this just mirrors the editor's own default.
-const PAGE_WIDTH = 816;
-const PAGE_HEIGHT = 1056;
-const MARGINS = 96;
+import type { ExportFormat, Preset } from "@/shared/types";
+import { DEFAULT_PAGE_LAYOUT, resolvePageDimensions } from "@/shared/pageLayout";
 
 function FillAndPreviewPage() {
   return (
@@ -54,10 +45,20 @@ function FillAndPreviewContent() {
     listValues,
     setListRows,
     currentRow,
-    setCurrentRow
+    setCurrentRow,
+    clearField,
+    clearAll,
+    applySnapshot,
+    getSnapshot,
+    canUndo,
+    undo
   } = useFillValues();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
+  const [presets, setPresets] = useState<Preset[]>([]);
+
+  const pageLayout = meta?.pageLayout ?? DEFAULT_PAGE_LAYOUT;
+  const pageDimensions = resolvePageDimensions(pageLayout);
   const [pendingAction, setPendingAction] = useState<
     "export-current" | "export-all" | "print-current" | "print-all" | null
   >(null);
@@ -94,6 +95,41 @@ function FillAndPreviewContent() {
     }
   }
 
+  useEffect(() => {
+    if (!meta) return;
+    window.bundle.listPresets(meta.id).then(setPresets);
+  }, [meta]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isTextInput =
+        target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
+      if (isTextInput) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        undo();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo]);
+
+  function handleSaveNewPreset(name: string) {
+    if (!meta) return;
+    window.bundle
+      .savePreset(meta.id, name, getSnapshot())
+      .then(preset => setPresets(prev => [preset, ...prev]));
+  }
+
+  function handleDeletePreset(presetId: string) {
+    if (!meta) return;
+    window.bundle
+      .deletePreset(meta.id, presetId)
+      .then(() => setPresets(prev => prev.filter(p => p.id !== presetId)));
+  }
+
   function waitForPaint() {
     return new Promise<void>(resolve => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
@@ -112,7 +148,8 @@ function FillAndPreviewContent() {
         format,
         content,
         placeholders: meta.placeholders,
-        values
+        values,
+        pageLayout
       });
       if (!result.canceled) toast.success(`Exported ${format.toUpperCase()}`);
     } catch (err) {
@@ -126,7 +163,7 @@ function FillAndPreviewContent() {
     try {
       setIsCapturingSnapshot(true);
       await waitForPaint();
-      await window.bundle.printDocument();
+      await window.bundle.printDocument(pageLayout);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Print failed");
     } finally {
@@ -171,6 +208,7 @@ function FillAndPreviewContent() {
           content,
           placeholders: meta.placeholders,
           values: rowValues,
+          pageLayout,
           destinationPath: `${folderPath}/${filename}`
         });
         if (result.canceled) {
@@ -212,7 +250,7 @@ function FillAndPreviewContent() {
       }
 
       await waitForPaint();
-      await window.bundle.printDocument();
+      await window.bundle.printDocument(pageLayout);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Print failed");
     } finally {
@@ -313,14 +351,7 @@ function FillAndPreviewContent() {
 
   const editor = useEditor(
     {
-      extensions: [
-        StarterKit,
-        TextAlign.configure({ types: ["heading", "paragraph"] }),
-        TextStyle,
-        NormalizedFontFamily,
-        FontSize,
-        createPlaceholderExtension(FilledPlaceholderChip)
-      ],
+      extensions: createFillPreviewExtensions(),
       content: (content as object) ?? {
         type: "doc",
         content: [{ type: "paragraph" }]
@@ -330,6 +361,9 @@ function FillAndPreviewContent() {
     },
     [content]
   );
+
+  const usableHeight = pageDimensions.height - 2 * pageDimensions.margins;
+  const pageSlices = usePageSlices(editor, content, usableHeight);
 
   return (
     <div className="flex w-full h-full print:h-auto">
@@ -348,6 +382,13 @@ function FillAndPreviewContent() {
         </div>
 
         <div className="flex flex-col gap-4 p-4 flex-1 overflow-y-auto">
+          <PresetDropdown
+            presets={presets}
+            onLoad={preset => applySnapshot(preset.snapshot)}
+            onSaveNew={handleSaveNewPreset}
+            onDelete={handleDeletePreset}
+          />
+
           {(meta?.placeholders ?? []).map(p => (
             <ValueInputCard
               key={p.id}
@@ -360,6 +401,7 @@ function FillAndPreviewContent() {
               }
               listText={(listValues[p.id] ?? []).join("\n")}
               onListTextChange={text => setListRows(p.id, text)}
+              onClear={() => clearField(p.id)}
             />
           ))}
         </div>
@@ -387,6 +429,21 @@ function FillAndPreviewContent() {
               </Button>
             </div>
           </div>
+
+          <div className="flex gap-2">
+            <Button size="xs" variant="muted" fullWidth onClick={clearAll}>
+              Clear all
+            </Button>
+            <Button
+              size="xs"
+              variant="muted"
+              fullWidth
+              disabled={!canUndo}
+              onClick={undo}
+            >
+              Undo
+            </Button>
+          </div>
         </div>
       </aside>
 
@@ -405,22 +462,45 @@ function FillAndPreviewContent() {
           />
         )}
 
-        <div className="flex-1 overflow-auto bg-[#e8e5df] p-8 print:overflow-visible print:p-0 print:bg-white">
+        <div className="relative flex-1 overflow-auto bg-background-sunken p-8 print:overflow-visible print:p-0 print:bg-white">
           {!loading && (
-            <div
-              ref={paperRef}
-              className="bg-white mx-auto shadow-md print:shadow-none print:mx-0"
-              style={{
-                width: `${PAGE_WIDTH}px`,
-                minHeight: `${PAGE_HEIGHT}px`,
-                padding: `${MARGINS}px`
-              }}
-            >
-              <EditorContent
-                editor={editor}
-                className="outline-none min-h-full prose prose-sm max-w-none"
-              />
-            </div>
+            <>
+              <div
+                ref={paperRef}
+                className="paper-sheet absolute top-0 left-0 invisible bg-white mx-auto shadow-md print:static print:visible print:shadow-none print:mx-0"
+                style={
+                  {
+                    width: `${pageDimensions.width}px`,
+                    minHeight: `${pageDimensions.height}px`,
+                    padding: `${pageDimensions.margins}px`,
+                    // Under print, the main process now insets real margins
+                    // natively (see ipc-handlers.ts) — the printable content
+                    // area is narrower than the full page. Without this, the
+                    // content box stays full-page-width while the printable
+                    // area shrinks around it, so Chromium scales the whole
+                    // render (text included) down to fit, which is why font
+                    // looked smaller and content fell short of the page end.
+                    "--print-content-width": `${pageDimensions.width - 2 * pageDimensions.margins}px`
+                  } as React.CSSProperties
+                }
+              >
+                <EditorContent
+                  editor={editor}
+                  className="outline-none min-h-full prose prose-sm max-w-none"
+                />
+              </div>
+
+              <div className="print:hidden">
+                {pageSlices.map((slice, i) => (
+                  <PreviewPageSheet
+                    key={i}
+                    slice={slice}
+                    pageDimensions={pageDimensions}
+                    pageNumber={i + 1}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useState } from "react";
 import { DATE_FORMATS } from "@/shared/dateFormats";
+import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
 import type {
   DateFormatKey,
   Placeholder,
@@ -36,12 +37,15 @@ function PlaceholderCard({
     <div className="rounded-lg bg-card-muted p-4">
       <div className="flex flex-col gap-2 ">
         <div className="flex justify-between">
-          <p className="text-xs bg-primary-soft p-1 rounded-sm font-bundle-serif">
+          <p
+            className="text-[10px] bg-primary-soft p-1 rounded-sm font-bundle-serif truncate min-w-0 flex items-center"
+            title={`{{${placeholder.key}}}`}
+          >
             {`{{${placeholder.key}}}`}
           </p>
 
           <div className="flex gap-1 items-center">
-            <p className="text-xs">
+            <p className="text-xs shrink-0">
               {useCount} {useCount === 1 ? "use" : "uses"}
             </p>
             <Button
@@ -140,28 +144,39 @@ function PlaceholderCard({
               >
                 U
               </Button>
-              <Input
-                variant="secondary"
-                scale="sm"
-                fullWidth
-                placeholder="Font"
+            </div>
+            <div className="flex items-center gap-2">
+              <select
                 value={placeholder.style.fontFamily ?? ""}
                 onChange={e =>
                   onStyleChange({ fontFamily: e.target.value || undefined })
                 }
-              />
-              <Input
-                variant="secondary"
-                scale="sm"
-                fullWidth
-                placeholder="Size"
+                className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full focus:outline-none"
+              >
+                {FONT_OPTIONS.map(f => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={placeholder.style.fontSize?.toString() ?? ""}
                 onChange={e =>
                   onStyleChange({
-                    fontSize: e.target.value ? Number(e.target.value) : undefined
+                    fontSize: e.target.value
+                      ? Number(e.target.value)
+                      : undefined
                   })
                 }
-              />
+                className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-20 shrink-0 focus:outline-none"
+              >
+                <option value="">Size</option>
+                {FONT_SIZE_OPTIONS.map(s => (
+                  <option key={s} value={s}>
+                    {s}pt
+                  </option>
+                ))}
+              </select>
             </div>
             <p className="text-[10px] text-muted-foreground">
               Custom fonts may not display correctly for recipients who don't

@@ -11,6 +11,7 @@ interface ValueInputCardProps {
   onToggleList: () => void;
   listText: string;
   onListTextChange: (text: string) => void;
+  onClear: () => void;
 }
 
 function ValueInputCard({
@@ -20,19 +21,23 @@ function ValueInputCard({
   listEnabled,
   onToggleList,
   listText,
-  onListTextChange
+  onListTextChange,
+  onClear
 }: ValueInputCardProps) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex justify-between">
-        <div className="flex items-center gap-1">
-          <p className="text-sm">{placeholder.label}</p>
-          <p className="text-xs text-subtle-foreground font-serif">
+      <div className="flex justify-between gap-2">
+        <div className="flex items-center gap-1 min-w-0">
+          <p className="text-sm shrink-0">{placeholder.label}</p>
+          <p
+            className="text-xs text-subtle-foreground font-serif truncate min-w-0"
+            title={`{{${placeholder.key}}}`}
+          >
             {`{{${placeholder.key}}}`}
           </p>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <Button
             variant={listEnabled ? "secondary" : "muted"}
             size="xs"
@@ -41,7 +46,7 @@ function ValueInputCard({
             <GridFourIcon /> List
           </Button>
 
-          <Button variant="muted" size="xs">
+          <Button variant="muted" size="xs" onClick={onClear} title="Clear">
             <ClockCounterClockwiseIcon size={15} />
           </Button>
         </div>

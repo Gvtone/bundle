@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router";
 import type { Placeholder, Template } from "@/shared/types";
+import { DEFAULT_PAGE_LAYOUT, type PageLayout } from "@/shared/pageLayout";
 
 export interface BulkExportState {
   hasListFields: boolean;
@@ -28,6 +29,7 @@ interface TemplateContextValue {
   setSaveHandler: (fn: (() => Promise<void>) | null) => void;
   placeholders: Placeholder[];
   updatePlaceholders: (updater: (prev: Placeholder[]) => Placeholder[]) => void;
+  updatePageLayout: (updater: (prev: PageLayout) => PageLayout) => void;
   insertPlaceholder: (() => void) | null;
   setInsertPlaceholderHandler: (fn: (() => void) | null) => void;
   exportHandler: (() => void) | null;
@@ -89,6 +91,17 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updatePageLayout = useCallback(
+    (updater: (prev: PageLayout) => PageLayout) => {
+      setMeta(prev =>
+        prev
+          ? { ...prev, pageLayout: updater(prev.pageLayout ?? DEFAULT_PAGE_LAYOUT) }
+          : prev
+      );
+    },
+    []
+  );
+
   const placeholders = meta?.placeholders ?? [];
 
   useEffect(() => {
@@ -117,6 +130,7 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
         setSaveHandler,
         placeholders,
         updatePlaceholders,
+        updatePageLayout,
         insertPlaceholder: insert,
         setInsertPlaceholderHandler,
         exportHandler,

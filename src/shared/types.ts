@@ -1,3 +1,5 @@
+import type { PageLayout } from "./pageLayout";
+
 export type DateFormatKey = "long";
 
 export interface PlaceholderStyle {
@@ -24,6 +26,7 @@ export interface Template {
   createdAt: string;
   updatedAt: string;
   placeholders: Placeholder[];
+  pageLayout?: PageLayout;
 }
 
 export type ExportFormat = "pdf" | "docx";
@@ -34,6 +37,7 @@ export interface ExportPayload {
   content: unknown;
   placeholders: Placeholder[];
   values: Record<string, string>;
+  pageLayout: PageLayout;
   destinationPath?: string; // when set, document:export writes here directly, skipping its save dialog
 }
 
@@ -47,6 +51,19 @@ export interface ChooseFolderResult {
   folderPath?: string;
 }
 
+export interface FillValuesSnapshot {
+  values: Record<string, string>;
+  listEnabled: Record<string, boolean>;
+  listValues: Record<string, string[]>;
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: FillValuesSnapshot;
+}
+
 export interface BundleApi {
   saveTemplate: (
     template: Partial<Template>,
@@ -56,6 +73,19 @@ export interface BundleApi {
   loadTemplate: (id: string) => Promise<{ meta: Template; content: unknown }>;
   deleteTemplate: (id: string) => Promise<void>;
   exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
-  printDocument: () => Promise<void>;
+  printDocument: (pageLayout: PageLayout) => Promise<void>;
   chooseExportFolder: () => Promise<ChooseFolderResult>;
+  saveFillValues: (
+    templateId: string,
+    snapshot: FillValuesSnapshot
+  ) => Promise<void>;
+  loadFillValues: (templateId: string) => Promise<FillValuesSnapshot | null>;
+  clearFillValues: (templateId: string) => Promise<void>;
+  savePreset: (
+    templateId: string,
+    name: string,
+    snapshot: FillValuesSnapshot
+  ) => Promise<Preset>;
+  listPresets: (templateId: string) => Promise<Preset[]>;
+  deletePreset: (templateId: string, presetId: string) => Promise<void>;
 }

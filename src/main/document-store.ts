@@ -8,15 +8,28 @@ import {
 } from "docx";
 import type { ExportPayload, Placeholder } from "../shared/types";
 import { DATE_FORMATS } from "../shared/dateFormats";
+import { resolvePageDimensions } from "../shared/pageLayout";
+import {
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE_PT,
+  DEFAULT_LINE_HEIGHT,
+  DEFAULT_PARAGRAPH_SPACING_PT
+} from "../shared/documentDefaults";
 
 // 1px @ 96dpi = 1/96 inch = 1440/96 = 15 twips (docx's unit).
 const TWIPS_PER_PX = 15;
-const PAGE_WIDTH_TWIPS = 816 * TWIPS_PER_PX;
-const PAGE_HEIGHT_TWIPS = 1056 * TWIPS_PER_PX;
-const MARGIN_TWIPS = 96 * TWIPS_PER_PX;
 const ORDERED_LIST_REFERENCE = "ordered-list";
 const MAX_LIST_DEPTH = 3;
-const DEFAULT_RUN_SIZE_HALF_POINTS = 24; // 12pt fallback for text with no explicit size mark
+const DEFAULT_RUN_SIZE_HALF_POINTS = DEFAULT_FONT_SIZE_PT * 2; // fallback for text with no explicit size mark
+// Fallback values for a paragraph with no explicit lineHeight/spacingAfter
+// attrs (set via the editor's Line spacing / Paragraph spacing controls) —
+// matches the on-screen/PDF preview's `.prose.prose-sm` override in
+// theme.css, which targets Word's "Normal" style defaults. Applied
+// symmetrically to both before/after (see spacing comment below) rather
+// than Word's true asymmetric 0pt-before/8pt-after — independent before/
+// after support is a follow-up, not yet built.
+const DEFAULT_LINE_HEIGHT_RATIO = DEFAULT_LINE_HEIGHT;
+const DEFAULT_SPACING_PT = DEFAULT_PARAGRAPH_SPACING_PT;
 
 interface TipTapMark {
   type: string;
@@ -160,6 +173,34 @@ interface ListContext {
   depth: number;
 }
 
+// contextualSpacing mirrors CSS's adjacent-sibling margin collapsing — without
+// it, Word sums consecutive paragraphs' before+after instead of collapsing to
+// one value like the preview shows, doubling document height and overflowing
+// onto extra pages. Not applied to list items — Typography gives those their
+// own tighter, different spacing that this would visibly over-space relative
+// to the preview.
+function paragraphSpacingProps(node: TipTapNode) {
+  const lineHeightRaw = node.attrs?.["lineHeight"];
+  const spacingRaw = node.attrs?.["spacingAfter"];
+
+  const ratio =
+    typeof lineHeightRaw === "string" && lineHeightRaw
+      ? parseFloat(lineHeightRaw)
+      : DEFAULT_LINE_HEIGHT_RATIO;
+  const spacingPt =
+    typeof spacingRaw === "string" && spacingRaw
+      ? parseFloat(spacingRaw.replace("pt", ""))
+      : DEFAULT_SPACING_PT;
+
+  const twips = Math.round(spacingPt * 20); // 1pt = 20 twips
+  const line = Math.round(ratio * 240); // Word's "auto" line-rule: 240 = single line
+
+  return {
+    spacing: { before: twips, after: twips, line, lineRule: "auto" as const },
+    contextualSpacing: true
+  };
+}
+
 function blockNodesToParagraphs(
   nodes: TipTapNode[],
   placeholders: Placeholder[],
@@ -189,7 +230,7 @@ function blockNodesToParagraphs(
                     level: listContext.depth
                   }
                 }
-              : {})
+              : paragraphSpacingProps(node))
         })
       );
     } else if (node.type === "bulletList" || node.type === "orderedList") {
@@ -218,11 +259,19 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
     payload.values
   );
 
+  const dims = resolvePageDimensions(payload.pageLayout);
+  const pageWidthTwips = dims.width * TWIPS_PER_PX;
+  const pageHeightTwips = dims.height * TWIPS_PER_PX;
+  const marginTwips = dims.margins * TWIPS_PER_PX;
+
   const document = new Document({
     styles: {
       default: {
         document: {
-          run: { size: DEFAULT_RUN_SIZE_HALF_POINTS }
+          run: {
+            size: DEFAULT_RUN_SIZE_HALF_POINTS,
+            font: DEFAULT_FONT_FAMILY
+          }
         }
       }
     },
@@ -243,12 +292,12 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
       {
         properties: {
           page: {
-            size: { width: PAGE_WIDTH_TWIPS, height: PAGE_HEIGHT_TWIPS },
+            size: { width: pageWidthTwips, height: pageHeightTwips },
             margin: {
-              top: MARGIN_TWIPS,
-              right: MARGIN_TWIPS,
-              bottom: MARGIN_TWIPS,
-              left: MARGIN_TWIPS
+              top: marginTwips,
+              right: marginTwips,
+              bottom: marginTwips,
+              left: marginTwips
             }
           }
         },

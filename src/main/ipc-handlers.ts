@@ -1,14 +1,53 @@
-import { ipcMain, BrowserWindow, dialog } from "electron";
+import { ipcMain, BrowserWindow, dialog, shell } from "electron";
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import {
   saveTemplate,
   listTemplates,
   loadTemplate,
   deleteTemplate
 } from "./template-store";
+import {
+  saveFillValues,
+  loadFillValues,
+  clearFillValues
+} from "./fill-values-store";
+import { savePreset, listPresets, deletePreset } from "./preset-store";
 import { buildDocx } from "./document-store";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
-import type { ExportPayload } from "../shared/types";
+import { resolvePageDimensions } from "../shared/pageLayout";
+import type { PageLayout } from "../shared/pageLayout";
+import type { ExportPayload, FillValuesSnapshot } from "../shared/types";
+
+// Both PDF export and Print generate the PDF the same way — Print reuses
+// this instead of webContents.print(), whose page-size/margin fidelity
+// goes through the OS print pipeline (driver-dependent, e.g. "Microsoft
+// Print to PDF" snapping custom sizes to its own supported list) and
+// proved unreliable across two different unit conventions. printToPDF
+// generates the PDF directly, no OS/driver involvement, and is confirmed
+// correct.
+function pdfPrintOptions(pageDimensions: {
+  width: number;
+  height: number;
+  margins: number;
+}) {
+  return {
+    pageSize: {
+      width: pageDimensions.width / 96,
+      height: pageDimensions.height / 96
+    },
+    margins: {
+      marginType: "custom" as const,
+      top: pageDimensions.margins / 96,
+      bottom: pageDimensions.margins / 96,
+      left: pageDimensions.margins / 96,
+      right: pageDimensions.margins / 96
+    },
+    printBackground: true
+  };
+}
 
 export function registerIpcHandlers() {
   ipcMain.handle("template:save", async (_event, template, content) => {
@@ -49,36 +88,36 @@ export function registerIpcHandlers() {
       filePath = saveResult.filePath;
     }
 
+    const pageDimensions = resolvePageDimensions(payload.pageLayout);
     const buffer =
       payload.format === "pdf"
-        ? await win.webContents.printToPDF({
-            pageSize: "Letter",
-            margins: { top: 0, bottom: 0, left: 0, right: 0 },
-            printBackground: true
-          })
+        ? await win.webContents.printToPDF(pdfPrintOptions(pageDimensions))
         : await buildDocx(payload);
 
     await fs.writeFile(filePath, buffer);
     return { canceled: false, filePath };
   });
 
-  ipcMain.handle("document:print", async event => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) throw new Error("No window found for print request");
+  ipcMain.handle(
+    "document:print",
+    async (event, pageLayout: PageLayout) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) throw new Error("No window found for print request");
+      const pageDimensions = resolvePageDimensions(pageLayout);
 
-    return new Promise<void>((resolve, reject) => {
-      win.webContents.print(
-        { margins: { marginType: "none" }, printBackground: true },
-        (success, failureReason) => {
-          if (success || failureReason === "Print job canceled") {
-            resolve();
-          } else {
-            reject(new Error(failureReason));
-          }
-        }
+      const buffer = await win.webContents.printToPDF(
+        pdfPrintOptions(pageDimensions)
       );
-    });
-  });
+      const tempPath = path.join(
+        os.tmpdir(),
+        `bundle-print-${randomUUID()}.pdf`
+      );
+      await fs.writeFile(tempPath, buffer);
+
+      const openError = await shell.openPath(tempPath);
+      if (openError) throw new Error(openError);
+    }
+  );
 
   ipcMain.handle("document:choose-folder", async event => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -92,4 +131,42 @@ export function registerIpcHandlers() {
     if (canceled || !folderPath) return { canceled: true };
     return { canceled: false, folderPath };
   });
+
+  ipcMain.handle(
+    "values:save",
+    async (_event, templateId: string, snapshot: FillValuesSnapshot) => {
+      return saveFillValues(templateId, snapshot);
+    }
+  );
+
+  ipcMain.handle("values:load", async (_event, templateId: string) => {
+    return loadFillValues(templateId);
+  });
+
+  ipcMain.handle("values:clear", async (_event, templateId: string) => {
+    return clearFillValues(templateId);
+  });
+
+  ipcMain.handle(
+    "preset:save",
+    async (
+      _event,
+      templateId: string,
+      name: string,
+      snapshot: FillValuesSnapshot
+    ) => {
+      return savePreset(templateId, name, snapshot);
+    }
+  );
+
+  ipcMain.handle("preset:list", async (_event, templateId: string) => {
+    return listPresets(templateId);
+  });
+
+  ipcMain.handle(
+    "preset:delete",
+    async (_event, templateId: string, presetId: string) => {
+      return deletePreset(templateId, presetId);
+    }
+  );
 }
