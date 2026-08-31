@@ -34,6 +34,8 @@ import {
   type PageSizeKey
 } from "@/shared/pageLayout";
 import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
+import { useZoom } from "@/renderer/hooks/useZoom";
+import ZoomControl from "../components/ui/ZoomControl";
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
 import {
   DEFAULT_FONT_SIZE_PT,
@@ -97,7 +99,10 @@ function EditTemplatePage() {
     [content]
   );
 
-  const pageBreakLines = usePageBreakOverlay(editor, usableHeight);
+  const { zoom, zoomFactor, zoomIn, zoomOut, reset: resetZoom, containerRef: zoomContainerRef } =
+    useZoom();
+
+  const pageBreakLines = usePageBreakOverlay(editor, usableHeight, zoomFactor);
 
   const editorState = useEditorState({
     editor,
@@ -520,38 +525,52 @@ function EditTemplatePage() {
 
         {/* Paper canvas */}
         {!loading && (
-          <div className="flex-1 overflow-auto bg-background-sunken p-8">
+          <div className="relative flex-1 overflow-hidden">
             <div
-              className="relative bg-white mx-auto shadow-md"
-              style={{
-                width: `${currentPageSize.width}px`,
-                minHeight: `${currentPageSize.height}px`,
-                padding: `${margins}px`
-              }}
-              onMouseDown={e => {
-                if (e.target === e.currentTarget) {
-                  editor?.commands.focus("end");
-                }
-              }}
+              ref={zoomContainerRef}
+              className="h-full overflow-auto bg-background-sunken p-8"
             >
-              <EditorContent
-                editor={editor}
-                className="outline-none min-h-full prose prose-sm max-w-none"
-              />
+              <div
+                className="relative bg-white mx-auto shadow-md"
+                style={{
+                  width: `${currentPageSize.width}px`,
+                  minHeight: `${currentPageSize.height}px`,
+                  padding: `${margins}px`,
+                  transform: `scale(${zoomFactor})`,
+                  transformOrigin: "top center"
+                }}
+                onMouseDown={e => {
+                  if (e.target === e.currentTarget) {
+                    editor?.commands.focus("end");
+                  }
+                }}
+              >
+                <EditorContent
+                  editor={editor}
+                  className="outline-none min-h-full prose prose-sm max-w-none"
+                />
 
-              {pageBreakLines.map((line, i) => (
-                <div
-                  key={i}
-                  className="absolute left-0 right-0 pointer-events-none"
-                  style={{ top: `${line.top + margins}px` }}
-                >
-                  <div className="border-t border-dashed border-subtle-foreground" />
-                  <div className="absolute -top-5 right-0 text-xs text-muted-foreground bg-white px-1">
-                    Page {i + 2}
+                {pageBreakLines.map((line, i) => (
+                  <div
+                    key={i}
+                    className="absolute left-0 right-0 pointer-events-none"
+                    style={{ top: `${line.top + margins}px` }}
+                  >
+                    <div className="border-t border-dashed border-subtle-foreground" />
+                    <div className="absolute -top-5 right-0 text-xs text-muted-foreground bg-white px-1">
+                      Page {i + 2}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
+            <ZoomControl
+              zoom={zoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onReset={resetZoom}
+            />
           </div>
         )}
       </div>

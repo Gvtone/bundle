@@ -11,6 +11,8 @@ import PresetDropdown from "../components/fill-and-preview/PresetDropdown";
 import PreviewPageSheet from "../components/fill-and-preview/PreviewPageSheet";
 import { buildBulkFilename } from "@/renderer/utils/bulkFilename";
 import { cn } from "@/renderer/utils/utils";
+import { useZoom } from "@/renderer/hooks/useZoom";
+import ZoomControl from "../components/ui/ZoomControl";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import {
   FillValuesProvider,
@@ -55,6 +57,14 @@ function FillAndPreviewContent() {
   } = useFillValues();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
+  const {
+    zoom,
+    zoomFactor,
+    zoomIn,
+    zoomOut,
+    reset: resetZoom,
+    containerRef: zoomContainerRef
+  } = useZoom();
   const [presets, setPresets] = useState<Preset[]>([]);
 
   const pageLayout = meta?.pageLayout ?? DEFAULT_PAGE_LAYOUT;
@@ -462,46 +472,64 @@ function FillAndPreviewContent() {
           />
         )}
 
-        <div className="relative flex-1 overflow-auto bg-background-sunken p-8 print:overflow-visible print:p-0 print:bg-white">
-          {!loading && (
-            <>
-              <div
-                ref={paperRef}
-                className="paper-sheet absolute top-0 left-0 invisible bg-white mx-auto shadow-md print:static print:visible print:shadow-none print:mx-0"
-                style={
-                  {
-                    width: `${pageDimensions.width}px`,
-                    minHeight: `${pageDimensions.height}px`,
-                    padding: `${pageDimensions.margins}px`,
-                    // Under print, the main process now insets real margins
-                    // natively (see ipc-handlers.ts) — the printable content
-                    // area is narrower than the full page. Without this, the
-                    // content box stays full-page-width while the printable
-                    // area shrinks around it, so Chromium scales the whole
-                    // render (text included) down to fit, which is why font
-                    // looked smaller and content fell short of the page end.
-                    "--print-content-width": `${pageDimensions.width - 2 * pageDimensions.margins}px`
-                  } as React.CSSProperties
-                }
-              >
-                <EditorContent
-                  editor={editor}
-                  className="outline-none min-h-full prose prose-sm max-w-none"
-                />
-              </div>
-
-              <div className="print:hidden">
-                {pageSlices.map((slice, i) => (
-                  <PreviewPageSheet
-                    key={i}
-                    slice={slice}
-                    pageDimensions={pageDimensions}
-                    pageNumber={i + 1}
+        <div className="relative flex-1 overflow-hidden print:flex-none print:h-auto print:overflow-visible">
+          <div
+            ref={zoomContainerRef}
+            className="relative h-full overflow-auto bg-background-sunken p-8 print:overflow-visible print:p-0 print:bg-white"
+          >
+            {!loading && (
+              <>
+                <div
+                  ref={paperRef}
+                  className="paper-sheet absolute top-0 left-0 invisible bg-white mx-auto shadow-md print:static print:visible print:shadow-none print:mx-0"
+                  style={
+                    {
+                      width: `${pageDimensions.width}px`,
+                      minHeight: `${pageDimensions.height}px`,
+                      padding: `${pageDimensions.margins}px`,
+                      // Under print, the main process now insets real margins
+                      // natively (see ipc-handlers.ts) — the printable content
+                      // area is narrower than the full page. Without this, the
+                      // content box stays full-page-width while the printable
+                      // area shrinks around it, so Chromium scales the whole
+                      // render (text included) down to fit, which is why font
+                      // looked smaller and content fell short of the page end.
+                      "--print-content-width": `${pageDimensions.width - 2 * pageDimensions.margins}px`
+                    } as React.CSSProperties
+                  }
+                >
+                  <EditorContent
+                    editor={editor}
+                    className="outline-none min-h-full prose prose-sm max-w-none"
                   />
-                ))}
-              </div>
-            </>
-          )}
+                </div>
+
+                <div
+                  className="print:hidden"
+                  style={{
+                    transform: `scale(${zoomFactor})`,
+                    transformOrigin: "top center"
+                  }}
+                >
+                  {pageSlices.map((slice, i) => (
+                    <PreviewPageSheet
+                      key={i}
+                      slice={slice}
+                      pageDimensions={pageDimensions}
+                      pageNumber={i + 1}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <ZoomControl
+            zoom={zoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onReset={resetZoom}
+          />
         </div>
       </div>
 
