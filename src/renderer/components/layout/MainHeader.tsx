@@ -23,12 +23,15 @@ function MainHeader() {
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState("");
 
-  // Renaming is in-memory only (persisted on the next Save, same as
-  // placeholder label edits) — leaving the page mid-edit shouldn't leave a
-  // stale draft active for the next template.
+  // Renaming/re-categorizing is in-memory only (persisted on the next Save,
+  // same as placeholder label edits) — leaving the page mid-edit shouldn't
+  // leave a stale draft active for the next template.
   useEffect(() => {
     setIsEditingName(false);
+    setIsEditingCategory(false);
   }, [templateId]);
 
   function startEditingName() {
@@ -41,6 +44,18 @@ function MainHeader() {
     const trimmed = nameDraft.trim();
     if (trimmed) updateMeta(prev => ({ ...prev, name: trimmed }));
     setIsEditingName(false);
+  }
+
+  function startEditingCategory() {
+    if (!isEdit || !meta) return;
+    setCategoryDraft(meta.category);
+    setIsEditingCategory(true);
+  }
+
+  function commitCategoryEdit() {
+    const trimmed = categoryDraft.trim();
+    if (trimmed) updateMeta(prev => ({ ...prev, category: trimmed }));
+    setIsEditingCategory(false);
   }
 
   return (
@@ -73,9 +88,35 @@ function MainHeader() {
             {meta?.name ?? "Loading..."}
           </h2>
         )}
-        <p className="text-xs text-subtle-foreground">
-          {meta ? `${meta.category} · ${meta.placeholders.length} fields` : ""}
-        </p>
+        {meta && (
+          <p className="text-xs text-subtle-foreground flex items-center gap-1">
+            {isEditingCategory ? (
+              <input
+                autoFocus
+                value={categoryDraft}
+                onChange={e => setCategoryDraft(e.target.value)}
+                onFocus={e => e.target.select()}
+                onBlur={commitCategoryEdit}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitCategoryEdit();
+                  }
+                  if (e.key === "Escape") setIsEditingCategory(false);
+                }}
+                className="text-xs bg-transparent border-b border-border focus:outline-none w-20"
+              />
+            ) : (
+              <span
+                className={cn(isEdit && "cursor-text hover:text-foreground")}
+                onClick={startEditingCategory}
+              >
+                {meta.category}
+              </span>
+            )}
+            <span>· {meta.placeholders.length} fields</span>
+          </p>
+        )}
       </div>
 
       {/* Action Buttons */}
