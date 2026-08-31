@@ -31,7 +31,7 @@ function PlaceholderChip({ node }: ReactNodeViewProps) {
     <NodeViewWrapper
       as="span"
       contentEditable={false}
-      className="rounded-sm bg-primary-soft p-1 font-bundle-serif text-xs"
+      className="rounded-sm bg-chip-bg p-1 font-bundle-serif text-xs text-chip-foreground"
       style={style}
     >
       {`{{${placeholder.key}}}`}

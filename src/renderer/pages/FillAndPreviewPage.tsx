@@ -462,7 +462,7 @@ function FillAndPreviewContent() {
           />
         )}
 
-        <div className="relative flex-1 overflow-auto bg-[#e8e5df] p-8 print:overflow-visible print:p-0 print:bg-white">
+        <div className="relative flex-1 overflow-auto bg-background-sunken p-8 print:overflow-visible print:p-0 print:bg-white">
           {!loading && (
             <>
               <div

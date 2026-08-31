@@ -22,7 +22,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createPlaceholderExtension } from "@/renderer/lib/placeholder-extension";
 import PlaceholderChip from "../components/edit-template/PlaceholderChip";
@@ -35,6 +35,11 @@ import {
 } from "@/shared/pageLayout";
 import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
+import {
+  DEFAULT_FONT_SIZE_PT,
+  DEFAULT_LINE_HEIGHT,
+  DEFAULT_PARAGRAPH_SPACING_PT
+} from "@/shared/documentDefaults";
 
 const LINE_HEIGHT_OPTIONS = [
   { label: "Single", value: "1" },
@@ -226,32 +231,59 @@ function EditTemplatePage() {
     setDeleteTarget(null);
   }
 
+  // Native <select> elements steal DOM focus more disruptively than a
+  // same-page button, which can collapse the editor's selection (especially
+  // one spanning multiple list items) before the change handler runs.
+  // Capturing the range on mousedown (before that focus shift happens) lets
+  // us restore the actual highlighted range instead of trusting whatever
+  // editor.state.selection has become by the time onChange fires.
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
+
+  function captureSelection() {
+    if (!editor) return;
+    savedSelectionRef.current = {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to
+    };
+  }
+
+  function restoreSelectionChain() {
+    const chain = editor!.chain().focus();
+    return savedSelectionRef.current
+      ? chain.setTextSelection(savedSelectionRef.current)
+      : chain;
+  }
+
   function handleFontChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
     const value = e.target.value;
     if (!value) {
-      editor?.chain().focus().unsetFontFamily().run();
+      restoreSelectionChain().unsetFontFamily().run();
     } else {
-      editor?.chain().focus().setFontFamily(value).run();
+      restoreSelectionChain().setFontFamily(value).run();
     }
   }
 
   function handleSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
     const value = e.target.value;
     if (!value) {
-      editor?.chain().focus().unsetFontSize().run();
+      restoreSelectionChain().unsetFontSize().run();
     } else {
-      editor?.chain().focus().setFontSize(`${value}pt`).run();
+      restoreSelectionChain().setFontSize(`${value}pt`).run();
     }
   }
 
   function handleLineHeightChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
     const value = e.target.value;
-    editor?.chain().focus().setLineHeight(value || null).run();
+    restoreSelectionChain().setLineHeight(value || null).run();
   }
 
   function handleParagraphSpacingChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
     const value = e.target.value;
-    editor?.chain().focus().setParagraphSpacing(value || null).run();
+    restoreSelectionChain().setParagraphSpacing(value || null).run();
   }
 
   return (
@@ -289,6 +321,7 @@ function EditTemplatePage() {
           {/* Font family */}
           <select
             value={editorState?.currentFont ?? ""}
+            onMouseDown={captureSelection}
             onChange={handleFontChange}
             className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
             style={{ fontFamily: editorState?.currentFont || "inherit" }}
@@ -307,10 +340,11 @@ function EditTemplatePage() {
           {/* Font size */}
           <select
             value={editorState?.currentSize?.replace("pt", "") ?? ""}
+            onMouseDown={captureSelection}
             onChange={handleSizeChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-20 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-28 focus:outline-none"
           >
-            <option value="">Size</option>
+            <option value="">{DEFAULT_FONT_SIZE_PT}pt (Default)</option>
             {FONT_SIZE_OPTIONS.map(s => (
               <option key={s} value={s}>
                 {s}pt
@@ -321,10 +355,11 @@ function EditTemplatePage() {
           {/* Line spacing */}
           <select
             value={editorState?.currentLineHeight ?? ""}
+            onMouseDown={captureSelection}
             onChange={handleLineHeightChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-28 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-32 focus:outline-none"
           >
-            <option value="">Line spacing</option>
+            <option value="">{DEFAULT_LINE_HEIGHT} (Default)</option>
             {LINE_HEIGHT_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -335,10 +370,11 @@ function EditTemplatePage() {
           {/* Paragraph spacing */}
           <select
             value={editorState?.currentSpacing ?? ""}
+            onMouseDown={captureSelection}
             onChange={handleParagraphSpacingChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-32 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
           >
-            <option value="">Paragraph spacing</option>
+            <option value="">{DEFAULT_PARAGRAPH_SPACING_PT}pt (Default)</option>
             {PARAGRAPH_SPACING_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -484,7 +520,7 @@ function EditTemplatePage() {
 
         {/* Paper canvas */}
         {!loading && (
-          <div className="flex-1 overflow-auto bg-[#e8e5df] p-8">
+          <div className="flex-1 overflow-auto bg-background-sunken p-8">
             <div
               className="relative bg-white mx-auto shadow-md"
               style={{
@@ -492,7 +528,7 @@ function EditTemplatePage() {
                 minHeight: `${currentPageSize.height}px`,
                 padding: `${margins}px`
               }}
-              onClick={e => {
+              onMouseDown={e => {
                 if (e.target === e.currentTarget) {
                   editor?.commands.focus("end");
                 }

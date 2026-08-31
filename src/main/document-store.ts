@@ -9,18 +9,27 @@ import {
 import type { ExportPayload, Placeholder } from "../shared/types";
 import { DATE_FORMATS } from "../shared/dateFormats";
 import { resolvePageDimensions } from "../shared/pageLayout";
+import {
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE_PT,
+  DEFAULT_LINE_HEIGHT,
+  DEFAULT_PARAGRAPH_SPACING_PT
+} from "../shared/documentDefaults";
 
 // 1px @ 96dpi = 1/96 inch = 1440/96 = 15 twips (docx's unit).
 const TWIPS_PER_PX = 15;
 const ORDERED_LIST_REFERENCE = "ordered-list";
 const MAX_LIST_DEPTH = 3;
-const DEFAULT_RUN_SIZE_HALF_POINTS = 24; // 12pt fallback for text with no explicit size mark
+const DEFAULT_RUN_SIZE_HALF_POINTS = DEFAULT_FONT_SIZE_PT * 2; // fallback for text with no explicit size mark
 // Fallback values for a paragraph with no explicit lineHeight/spacingAfter
 // attrs (set via the editor's Line spacing / Paragraph spacing controls) —
-// matches the on-screen/PDF preview's Tailwind Typography "prose-sm" styles:
-// 16px (12pt) paragraph margin-top/bottom, and a 24/14 line-height ratio.
-const DEFAULT_LINE_HEIGHT_RATIO = 24 / 14;
-const DEFAULT_SPACING_PT = 12;
+// matches the on-screen/PDF preview's `.prose.prose-sm` override in
+// theme.css, which targets Word's "Normal" style defaults. Applied
+// symmetrically to both before/after (see spacing comment below) rather
+// than Word's true asymmetric 0pt-before/8pt-after — independent before/
+// after support is a follow-up, not yet built.
+const DEFAULT_LINE_HEIGHT_RATIO = DEFAULT_LINE_HEIGHT;
+const DEFAULT_SPACING_PT = DEFAULT_PARAGRAPH_SPACING_PT;
 
 interface TipTapMark {
   type: string;
@@ -259,7 +268,10 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
     styles: {
       default: {
         document: {
-          run: { size: DEFAULT_RUN_SIZE_HALF_POINTS }
+          run: {
+            size: DEFAULT_RUN_SIZE_HALF_POINTS,
+            font: DEFAULT_FONT_FAMILY
+          }
         }
       }
     },

@@ -1,6 +1,8 @@
+import { DEFAULT_FONT_FAMILY } from "@/shared/documentDefaults";
+
 // Safe font list — universally installed, won't break on recipient's machine
 export const FONT_OPTIONS = [
-  { label: "Default", value: "" },
+  { label: `${DEFAULT_FONT_FAMILY} (Default)`, value: "" },
   { label: "Arial", value: "Arial" },
   { label: "Times New Roman", value: "Times New Roman" },
   { label: "Calibri", value: "Calibri" },

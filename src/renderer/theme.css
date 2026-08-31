@@ -35,6 +35,12 @@
   --paper-muted-foreground: #7c756a;
   --paper-border: #e7e2d7;
 
+  /* --- Placeholder chip (fixed — the paper is always light, so this must
+     NOT flip with .dark like --primary-soft does, or the chip becomes
+     unreadable dark-on-dark) --- */
+  --chip-bg: #e2e7da;
+  --chip-foreground: #4c5942;
+
   /* --- Status: error (muted clay) --- */
   --destructive: #a65a4e;
   --destructive-hover: #92493e;
@@ -135,7 +141,7 @@
 @theme inline {
   /* --- Surfaces --- */
   --color-background: var(--background);
-  --color-background-sunken: var(--backgroudn-sunken);
+  --color-background-sunken: var(--background-sunken);
   --color-card: var(--card);
   --color-card-muted: var(--card-muted);
   --color-popover: var(--popover);
@@ -163,6 +169,10 @@
   --color-paper-foreground: var(--paper-foreground);
   --color-paper-muted-foreground: var(--paper-muted-foreground);
   --color-paper-border: var(--paper-border);
+
+  /* --- Placeholder chip (fixed, does not flip with .dark) --- */
+  --color-chip-bg: var(--chip-bg);
+  --color-chip-foreground: var(--chip-foreground);
 
   /* --- Status: error (muted clay) --- */
   --color-destructive: var(--destructive);
@@ -259,6 +269,27 @@
      on top of the sheet's own padding. */
   .ProseMirror > :first-child {
     margin-top: 0;
+  }
+
+  /* Document text defaults — matches Microsoft Word's modern "Normal" style
+     (Calibri, 11pt, 1.08 line height, 8pt paragraph spacing) so templates
+     look Word-familiar out of the box, overriding Tailwind Typography's own
+     prose-sm scale (tuned for UI reading, not a printable document). Keep
+     these numbers in sync with src/shared/documentDefaults.ts — CSS can't
+     import those constants directly. Only .prose.prose-sm is used by the
+     three document-rendering surfaces (EditTemplatePage, FillAndPreviewPage,
+     PreviewPageSheet), so this is safely scoped to document text only.
+     Symmetric before/after spacing is a known compromise vs. Word's true
+     asymmetric 0pt-before/8pt-after — see document-store.ts. */
+  .prose.prose-sm {
+    font-family: Calibri;
+    font-size: 11pt;
+    line-height: 1.08;
+  }
+
+  .prose.prose-sm p {
+    margin-top: 8pt;
+    margin-bottom: 8pt;
   }
 }
 

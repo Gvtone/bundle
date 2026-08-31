@@ -43,7 +43,7 @@ function FilledPlaceholderChip({ node }: ReactNodeViewProps) {
       <NodeViewWrapper
         as="span"
         contentEditable={false}
-        className="rounded-sm bg-primary-soft/40 p-1 font-bundle-serif text-xs text-muted-foreground"
+        className="rounded-sm bg-chip-bg/40 p-1 font-bundle-serif text-xs text-chip-foreground/70"
         style={style}
       >
         {`{{${placeholder.key}}}`}

@@ -38,7 +38,7 @@ function PlaceholderCard({
       <div className="flex flex-col gap-2 ">
         <div className="flex justify-between">
           <p
-            className="text-[10px] bg-primary-soft p-1 rounded-sm font-bundle-serif truncate min-w-0"
+            className="text-[10px] bg-primary-soft p-1 rounded-sm font-bundle-serif truncate min-w-0 flex items-center"
             title={`{{${placeholder.key}}}`}
           >
             {`{{${placeholder.key}}}`}
@@ -163,7 +163,9 @@ function PlaceholderCard({
                 value={placeholder.style.fontSize?.toString() ?? ""}
                 onChange={e =>
                   onStyleChange({
-                    fontSize: e.target.value ? Number(e.target.value) : undefined
+                    fontSize: e.target.value
+                      ? Number(e.target.value)
+                      : undefined
                   })
                 }
                 className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-20 shrink-0 focus:outline-none"
