@@ -7,6 +7,7 @@ import {
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useEffect, useState } from "react";
+import { useParams } from "react-router";
 import { cn } from "@/renderer/utils/utils";
 import LinkButton from "../ui/LinkButton";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
@@ -15,6 +16,7 @@ import { relativeTime } from "@/renderer/utils/relativeTime";
 import { useCreateTemplate } from "@/renderer/hooks/useCreateTemplate";
 
 function Sidebar() {
+  const { templateId } = useParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [templateSearch, setTemplateSearch] = useState("");
   const [debouncedTemplateSearch, setDebouncedTemplateSearch] = useState("");
@@ -120,7 +122,7 @@ function Sidebar() {
                   variant="tertiary"
                   fullWidth
                   className={!isSidebarOpen ? "size-10" : "px-5 py-2.5"}
-                  active
+                  active={template.id === templateId}
                 >
                   {isSidebarOpen ? (
                     <div className="w-full">
