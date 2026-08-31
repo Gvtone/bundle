@@ -33,6 +33,7 @@ import {
   resolvePageDimensions,
   type PageSizeKey
 } from "@/shared/pageLayout";
+import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
 
 // Safe font list — universally installed, won't break on recipient's machine
 const FONT_OPTIONS = [
@@ -96,6 +97,7 @@ function EditTemplatePage() {
   const pageLayout = meta?.pageLayout ?? DEFAULT_PAGE_LAYOUT;
   const { size: pageSize, margins } = pageLayout;
   const currentPageSize = resolvePageDimensions(pageLayout);
+  const usableHeight = currentPageSize.height - 2 * currentPageSize.margins;
 
   const editor = useEditor(
     {
@@ -116,6 +118,8 @@ function EditTemplatePage() {
     },
     [content]
   );
+
+  const pageBreakLines = usePageBreakOverlay(editor, usableHeight);
 
   const editorState = useEditorState({
     editor,
@@ -509,7 +513,7 @@ function EditTemplatePage() {
         {!loading && (
           <div className="flex-1 overflow-auto bg-[#e8e5df] p-8">
             <div
-              className="bg-white mx-auto shadow-md"
+              className="relative bg-white mx-auto shadow-md"
               style={{
                 width: `${currentPageSize.width}px`,
                 minHeight: `${currentPageSize.height}px`,
@@ -525,6 +529,19 @@ function EditTemplatePage() {
                 editor={editor}
                 className="outline-none min-h-full prose prose-sm max-w-none"
               />
+
+              {pageBreakLines.map((line, i) => (
+                <div
+                  key={i}
+                  className="absolute left-0 right-0 pointer-events-none"
+                  style={{ top: `${line.top + margins}px` }}
+                >
+                  <div className="border-t border-dashed border-subtle-foreground" />
+                  <div className="absolute -top-5 right-0 text-xs text-muted-foreground bg-white px-1">
+                    Page {i + 2}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

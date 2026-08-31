@@ -73,7 +73,7 @@ export interface BundleApi {
   loadTemplate: (id: string) => Promise<{ meta: Template; content: unknown }>;
   deleteTemplate: (id: string) => Promise<void>;
   exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
-  printDocument: () => Promise<void>;
+  printDocument: (pageLayout: PageLayout) => Promise<void>;
   chooseExportFolder: () => Promise<ChooseFolderResult>;
   saveFillValues: (
     templateId: string,

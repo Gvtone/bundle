@@ -8,7 +8,8 @@ const api: BundleApi = {
   loadTemplate: id => ipcRenderer.invoke("template:load", id),
   deleteTemplate: id => ipcRenderer.invoke("template:delete", id),
   exportDocument: payload => ipcRenderer.invoke("document:export", payload),
-  printDocument: () => ipcRenderer.invoke("document:print"),
+  printDocument: pageLayout =>
+    ipcRenderer.invoke("document:print", pageLayout),
   chooseExportFolder: () => ipcRenderer.invoke("document:choose-folder"),
   saveFillValues: (templateId, snapshot) =>
     ipcRenderer.invoke("values:save", templateId, snapshot),

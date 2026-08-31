@@ -145,7 +145,7 @@ function FillAndPreviewContent() {
     try {
       setIsCapturingSnapshot(true);
       await waitForPaint();
-      await window.bundle.printDocument();
+      await window.bundle.printDocument(pageLayout);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Print failed");
     } finally {
@@ -232,7 +232,7 @@ function FillAndPreviewContent() {
       }
 
       await waitForPaint();
-      await window.bundle.printDocument();
+      await window.bundle.printDocument(pageLayout);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Print failed");
     } finally {
@@ -438,12 +438,22 @@ function FillAndPreviewContent() {
             <>
               <div
                 ref={paperRef}
-                className="absolute top-0 left-0 invisible bg-white mx-auto shadow-md print:static print:visible print:shadow-none print:mx-0"
-                style={{
-                  width: `${pageDimensions.width}px`,
-                  minHeight: `${pageDimensions.height}px`,
-                  padding: `${pageDimensions.margins}px`
-                }}
+                className="paper-sheet absolute top-0 left-0 invisible bg-white mx-auto shadow-md print:static print:visible print:shadow-none print:mx-0"
+                style={
+                  {
+                    width: `${pageDimensions.width}px`,
+                    minHeight: `${pageDimensions.height}px`,
+                    padding: `${pageDimensions.margins}px`,
+                    // Under print, the main process now insets real margins
+                    // natively (see ipc-handlers.ts) — the printable content
+                    // area is narrower than the full page. Without this, the
+                    // content box stays full-page-width while the printable
+                    // area shrinks around it, so Chromium scales the whole
+                    // render (text included) down to fit, which is why font
+                    // looked smaller and content fell short of the page end.
+                    "--print-content-width": `${pageDimensions.width - 2 * pageDimensions.margins}px`
+                  } as React.CSSProperties
+                }
               >
                 <EditorContent
                   editor={editor}

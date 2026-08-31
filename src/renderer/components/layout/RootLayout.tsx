@@ -12,7 +12,7 @@ function RootLayoutContent() {
 
   return (
     <TemplatesProvider>
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen flex flex-col bg-background print:bg-white">
         <div className="flex-1">
           <Suspense>
             <div className="flex flex-col h-screen print:h-auto">
@@ -25,7 +25,11 @@ function RootLayoutContent() {
           </Suspense>
         </div>
       </div>
-      <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} />
+      <Toaster
+        position="bottom-right"
+        theme={isDark ? "dark" : "light"}
+        className="print:hidden"
+      />
     </TemplatesProvider>
   );
 }

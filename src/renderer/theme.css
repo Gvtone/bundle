@@ -251,4 +251,45 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+
+  /* Tailwind Typography's `> :first-child { margin-top: 0 }` targets direct
+     children of .prose, but TipTap's EditorContent mounts .ProseMirror as a
+     child of .prose, making paragraphs grandchildren — the reset never
+     reaches them, so every editor's first line carries a phantom top margin
+     on top of the sheet's own padding. */
+  .ProseMirror > :first-child {
+    margin-top: 0;
+  }
+}
+
+/* .paper-sheet's padding is the on-screen page margin, but under print
+   (both PDF export via printToPDF and native Print via webContents.print)
+   the main process now supplies the real page margin natively via the
+   `margins` option — repeated correctly on every physical page. Keeping
+   the CSS padding under print would double the margin on the first/last
+   page and, worse, still leave middle pages of a multi-page flow with no
+   margin at all (the original bug), since CSS padding on a single
+   continuous flowing element only ever renders once. */
+@media print {
+  .paper-sheet {
+    padding: 0 !important;
+    /* Native margins (see ipc-handlers.ts) inset real blank space around
+       the printable area, but this element's own width was still the full
+       page width — wider than that shrunk printable area, which made
+       Chromium auto-scale the whole render (text included) down to fit,
+       shrinking font size and leaving content short of the true page
+       bottom. Matching the width to the printable area avoids any scaling. */
+    width: var(--print-content-width) !important;
+  }
+
+  /* body's own bg-background (the app's cream canvas color) was never
+     overridden for print. Previously masked because the print container's
+     print:bg-white plus the padded paper div covered the physical page
+     edge-to-edge; now that the last page's content height rarely fills the
+     full physical page exactly (normal — pagination doesn't guarantee an
+     even multiple), any shortfall exposes this un-overridden background
+     underneath instead of white. */
+  body {
+    background: white !important;
+  }
 }
