@@ -49,7 +49,9 @@ function FillAndPreviewContent() {
     clearField,
     clearAll,
     applySnapshot,
-    getSnapshot
+    getSnapshot,
+    canUndo,
+    undo
   } = useFillValues();
 
   const [format, setFormat] = useState<ExportFormat>("pdf");
@@ -97,6 +99,22 @@ function FillAndPreviewContent() {
     if (!meta) return;
     window.bundle.listPresets(meta.id).then(setPresets);
   }, [meta]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isTextInput =
+        target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
+      if (isTextInput) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        undo();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo]);
 
   function handleSaveNewPreset(name: string) {
     if (!meta) return;
@@ -412,9 +430,20 @@ function FillAndPreviewContent() {
             </div>
           </div>
 
-          <Button size="xs" variant="muted" onClick={clearAll}>
-            Clear all
-          </Button>
+          <div className="flex gap-2">
+            <Button size="xs" variant="muted" fullWidth onClick={clearAll}>
+              Clear all
+            </Button>
+            <Button
+              size="xs"
+              variant="muted"
+              fullWidth
+              disabled={!canUndo}
+              onClick={undo}
+            >
+              Undo
+            </Button>
+          </div>
         </div>
       </aside>
 

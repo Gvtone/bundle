@@ -17,6 +17,8 @@ interface FillValuesContextValue {
   clearAll: () => void;
   applySnapshot: (snapshot: FillValuesSnapshot) => void;
   getSnapshot: () => FillValuesSnapshot;
+  canUndo: boolean;
+  undo: () => void;
 }
 
 const FillValuesContext = createContext<FillValuesContextValue | undefined>(
@@ -43,6 +45,9 @@ export function FillValuesProvider({
   const [currentRow, setCurrentRow] = useState(0);
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [lastSnapshot, setLastSnapshot] = useState<FillValuesSnapshot | null>(
+    null
+  );
 
   // Reset in-memory state and load the new template's persisted snapshot
   // whenever the route's templateId changes, so switching templates doesn't
@@ -53,6 +58,7 @@ export function FillValuesProvider({
     setListEnabledState({});
     setListValuesState({});
     setCurrentRow(0);
+    setLastSnapshot(null);
 
     if (!templateId) return;
 
@@ -129,13 +135,18 @@ export function FillValuesProvider({
 
   const clearField = useCallback(
     (id: string) => {
+      setLastSnapshot({
+        values: singleValues,
+        listEnabled,
+        listValues
+      });
       setSingleValues(prev => ({ ...prev, [id]: "" }));
       if (listEnabled[id]) {
         setListValuesState(prev => ({ ...prev, [id]: [""] }));
         setCurrentRow(0);
       }
     },
-    [listEnabled]
+    [singleValues, listEnabled, listValues]
   );
 
   const applySnapshot = useCallback((snapshot: FillValuesSnapshot) => {
@@ -143,6 +154,7 @@ export function FillValuesProvider({
     setListEnabledState(snapshot.listEnabled);
     setListValuesState(snapshot.listValues);
     setCurrentRow(0);
+    setLastSnapshot(null);
   }, []);
 
   const getSnapshot = useCallback(
@@ -155,12 +167,26 @@ export function FillValuesProvider({
   );
 
   const clearAll = useCallback(() => {
+    setLastSnapshot({
+      values: singleValues,
+      listEnabled,
+      listValues
+    });
     setSingleValues({});
     setListEnabledState({});
     setListValuesState({});
     setCurrentRow(0);
     if (templateId) window.bundle.clearFillValues(templateId);
-  }, [templateId]);
+  }, [templateId, singleValues, listEnabled, listValues]);
+
+  const undo = useCallback(() => {
+    if (!lastSnapshot) return;
+    setSingleValues(lastSnapshot.values);
+    setListEnabledState(lastSnapshot.listEnabled);
+    setListValuesState(lastSnapshot.listValues);
+    setCurrentRow(0);
+    setLastSnapshot(null);
+  }, [lastSnapshot]);
 
   const values: Record<string, string> = {};
   for (const id of new Set([
@@ -188,7 +214,9 @@ export function FillValuesProvider({
         clearField,
         clearAll,
         applySnapshot,
-        getSnapshot
+        getSnapshot,
+        canUndo: lastSnapshot !== null,
+        undo
       }}
     >
       {children}

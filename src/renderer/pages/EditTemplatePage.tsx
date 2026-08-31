@@ -34,34 +34,7 @@ import {
   type PageSizeKey
 } from "@/shared/pageLayout";
 import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
-
-// Safe font list — universally installed, won't break on recipient's machine
-const FONT_OPTIONS = [
-  { label: "Default", value: "" },
-  { label: "Arial", value: "Arial" },
-  { label: "Times New Roman", value: "Times New Roman" },
-  { label: "Calibri", value: "Calibri" },
-  { label: "Georgia", value: "Georgia" },
-  { label: "Courier New", value: "Courier New" }
-];
-
-const FONT_SIZE_OPTIONS = [
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-  "14",
-  "16",
-  "18",
-  "20",
-  "24",
-  "28",
-  "32",
-  "36",
-  "48",
-  "72"
-];
+import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
 
 const LINE_HEIGHT_OPTIONS = [
   { label: "Single", value: "1" },
