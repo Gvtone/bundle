@@ -8,7 +8,8 @@ import {
   TextAlignRightIcon,
   TextBIcon,
   TextItalicIcon,
-  TextUnderlineIcon
+  TextUnderlineIcon,
+  WarningCircleIcon
 } from "@phosphor-icons/react";
 import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -36,7 +37,12 @@ import {
 import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
 import { useZoom } from "@/renderer/hooks/useZoom";
 import ZoomControl from "../components/ui/ZoomControl";
-import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
+import {
+  FONT_OPTIONS,
+  FONT_SIZE_OPTIONS,
+  isSafeFont
+} from "@/renderer/lib/font-options";
+import { useSystemFonts } from "@/renderer/hooks/useSystemFonts";
 import {
   DEFAULT_FONT_SIZE_PT,
   DEFAULT_LINE_HEIGHT,
@@ -101,6 +107,9 @@ function EditTemplatePage() {
 
   const { zoom, zoomFactor, zoomIn, zoomOut, reset: resetZoom, containerRef: zoomContainerRef } =
     useZoom();
+
+  const { fonts: systemFonts } = useSystemFonts();
+  const otherFonts = systemFonts.filter(f => !isSafeFont(f));
 
   const pageBreakLines = usePageBreakOverlay(editor, usableHeight, zoomFactor);
 
@@ -331,16 +340,37 @@ function EditTemplatePage() {
             className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
             style={{ fontFamily: editorState?.currentFont || "inherit" }}
           >
-            {FONT_OPTIONS.map(f => (
-              <option
-                key={f.value}
-                value={f.value}
-                style={{ fontFamily: f.value || "inherit" }}
-              >
-                {f.label}
-              </option>
-            ))}
+            <option value="">{FONT_OPTIONS[0]?.label}</option>
+            <optgroup label="Recommended">
+              {FONT_OPTIONS.slice(1).map(f => (
+                <option
+                  key={f.value}
+                  value={f.value}
+                  style={{ fontFamily: f.value || "inherit" }}
+                >
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
+            {otherFonts.length > 0 && (
+              <optgroup label="Other fonts on this device">
+                {otherFonts.map(f => (
+                  <option key={f} value={f} style={{ fontFamily: f }}>
+                    {f}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
+
+          {editorState?.currentFont && !isSafeFont(editorState.currentFont) && (
+            <span
+              className="shrink-0 text-warning"
+              title={`"${editorState.currentFont}" may not display correctly for recipients who don't have it installed.`}
+            >
+              <WarningCircleIcon />
+            </span>
+          )}
 
           {/* Font size */}
           <select

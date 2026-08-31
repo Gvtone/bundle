@@ -21,7 +21,8 @@ const api: BundleApi = {
   listPresets: templateId => ipcRenderer.invoke("preset:list", templateId),
   deletePreset: (templateId, presetId) =>
     ipcRenderer.invoke("preset:delete", templateId, presetId),
-  notifyReady: () => ipcRenderer.send("app:renderer-ready")
+  notifyReady: () => ipcRenderer.send("app:renderer-ready"),
+  listSystemFonts: () => ipcRenderer.invoke("fonts:list")
 };
 
 contextBridge.exposeInMainWorld("bundle", api);

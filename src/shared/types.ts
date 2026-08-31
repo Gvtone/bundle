@@ -89,4 +89,5 @@ export interface BundleApi {
   listPresets: (templateId: string) => Promise<Preset[]>;
   deletePreset: (templateId: string, presetId: string) => Promise<void>;
   notifyReady: () => void;
+  listSystemFonts: () => Promise<string[]>;
 }

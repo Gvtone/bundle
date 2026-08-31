@@ -10,6 +10,16 @@ export const FONT_OPTIONS = [
   { label: "Courier New", value: "Courier New" }
 ];
 
+// Fonts installed on essentially every Windows/Mac machine — safe to use
+// in an exported document without a "may not display" warning.
+const SAFE_FONT_NAMES = new Set(
+  FONT_OPTIONS.map(f => f.value).filter(value => value !== "")
+);
+
+export function isSafeFont(fontFamily: string): boolean {
+  return SAFE_FONT_NAMES.has(fontFamily);
+}
+
 export const FONT_SIZE_OPTIONS = [
   "8",
   "9",
