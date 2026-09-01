@@ -16,7 +16,8 @@ export interface PageBreakLine {
 
 export function usePageBreakOverlay(
   editor: Editor | null,
-  usableHeight: number
+  usableHeight: number,
+  zoomFactor = 1
 ): PageBreakLine[] {
   const [lines, setLines] = useState<PageBreakLine[]>([]);
 
@@ -27,11 +28,18 @@ export function usePageBreakOverlay(
       if (!editor || editor.isDestroyed) return;
 
       const dom = editor.view.dom as HTMLElement;
-      const containerTop = dom.getBoundingClientRect().top;
+      // getBoundingClientRect() reflects the post-zoom (CSS transform:
+      // scale()) screen size, but usableHeight is a fixed, unscaled page
+      // dimension — normalize every reading back to logical pixels so the
+      // comparison stays correct at any zoom level. The computed `top`
+      // values this hook returns stay in that same logical space, since
+      // they're rendered as siblings inside the same transformed/scaled
+      // parent, which visually scales them back up automatically.
+      const containerTop = dom.getBoundingClientRect().top / zoomFactor;
       const nodeCount = editor.state.doc.childCount;
       const rects = Array.from(dom.children).map(el => {
         const r = (el as HTMLElement).getBoundingClientRect();
-        return { top: r.top, bottom: r.bottom };
+        return { top: r.top / zoomFactor, bottom: r.bottom / zoomFactor };
       });
 
       const breaks = computePageBreaks(nodeCount, rects, usableHeight);
@@ -66,7 +74,7 @@ export function usePageBreakOverlay(
       cancelAnimationFrame(frame);
       editor.off("update", onUpdate);
     };
-  }, [editor, usableHeight]);
+  }, [editor, usableHeight, zoomFactor]);
 
   return lines;
 }

@@ -3,7 +3,12 @@ import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useState } from "react";
 import { DATE_FORMATS } from "@/shared/dateFormats";
-import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from "@/renderer/lib/font-options";
+import {
+  FONT_OPTIONS,
+  FONT_SIZE_OPTIONS,
+  isSafeFont
+} from "@/renderer/lib/font-options";
+import { useSystemFonts } from "@/renderer/hooks/useSystemFonts";
 import type {
   DateFormatKey,
   Placeholder,
@@ -32,6 +37,8 @@ function PlaceholderCard({
   onInsert
 }: PlaceholderCardProps) {
   const [isTextStylingOpen, setIsTextStylingOpen] = useState(false);
+  const { fonts: systemFonts } = useSystemFonts();
+  const otherFonts = systemFonts.filter(f => !isSafeFont(f));
 
   return (
     <div className="rounded-lg bg-card-muted p-4">
@@ -153,11 +160,23 @@ function PlaceholderCard({
                 }
                 className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full focus:outline-none"
               >
-                {FONT_OPTIONS.map(f => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
+                <option value="">{FONT_OPTIONS[0]?.label}</option>
+                <optgroup label="Recommended">
+                  {FONT_OPTIONS.slice(1).map(f => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
+                {otherFonts.length > 0 && (
+                  <optgroup label="Other fonts on this device">
+                    {otherFonts.map(f => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               <select
                 value={placeholder.style.fontSize?.toString() ?? ""}

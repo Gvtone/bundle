@@ -1,3 +1,17 @@
+/* Self-hosted variable fonts (replaces a live Google Fonts CDN <link> that
+   used to render-block first paint — see main.ts's splash-screen work,
+   2026-08-31, for why that mattered enough to fix). Each package's default
+   export covers the weight axis for normal style; the italic style lives
+   in a separate wght-italic.css file. Fontsource registers the family
+   name with a " Variable" suffix — theme.css's --ui/--serif/--mono below
+   must reference that exact name, not the plain Google Fonts name. */
+@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/hanken-grotesk/wght-italic.css";
+@import "@fontsource-variable/source-serif-4";
+@import "@fontsource-variable/source-serif-4/wght-italic.css";
+@import "@fontsource-variable/spline-sans-mono";
+@import "@fontsource-variable/spline-sans-mono/wght-italic.css";
+
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -70,9 +84,9 @@
   --info-soft-foreground: #42525f;
 
   /* --- Fonts --- */
-  --ui: "Hanken Grotesk", system-ui, sans-serif;
-  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --mono: "Spline Sans Mono", ui-monospace, monospace;
+  --ui: "Hanken Grotesk Variable", system-ui, sans-serif;
+  --serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
+  --mono: "Spline Sans Mono Variable", ui-monospace, monospace;
 
   --radius: 11px;
 }

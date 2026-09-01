@@ -30,6 +30,7 @@ interface TemplateContextValue {
   placeholders: Placeholder[];
   updatePlaceholders: (updater: (prev: Placeholder[]) => Placeholder[]) => void;
   updatePageLayout: (updater: (prev: PageLayout) => PageLayout) => void;
+  updateMeta: (updater: (prev: Template) => Template) => void;
   insertPlaceholder: (() => void) | null;
   setInsertPlaceholderHandler: (fn: (() => void) | null) => void;
   exportHandler: (() => void) | null;
@@ -102,6 +103,10 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateMeta = useCallback((updater: (prev: Template) => Template) => {
+    setMeta(prev => (prev ? updater(prev) : prev));
+  }, []);
+
   const placeholders = meta?.placeholders ?? [];
 
   useEffect(() => {
@@ -131,6 +136,7 @@ export function TemplateProvider({ children }: { children: React.ReactNode }) {
         placeholders,
         updatePlaceholders,
         updatePageLayout,
+        updateMeta,
         insertPlaceholder: insert,
         setInsertPlaceholderHandler,
         exportHandler,

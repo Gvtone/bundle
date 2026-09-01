@@ -16,6 +16,7 @@ import {
 } from "./fill-values-store";
 import { savePreset, listPresets, deletePreset } from "./preset-store";
 import { buildDocx } from "./document-store";
+import { listSystemFonts } from "./system-fonts";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
 import { resolvePageDimensions } from "../shared/pageLayout";
 import type { PageLayout } from "../shared/pageLayout";
@@ -169,4 +170,8 @@ export function registerIpcHandlers() {
       return deletePreset(templateId, presetId);
     }
   );
+
+  ipcMain.handle("fonts:list", async () => {
+    return listSystemFonts();
+  });
 }
