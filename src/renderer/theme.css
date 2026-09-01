@@ -117,11 +117,14 @@
   --primary-soft: #333b2c;
   --primary-soft-foreground: #c7d2b6;
 
-  /* --- Document "paper" (dark variant) --- */
-  --paper: #22201c;
-  --paper-foreground: #eae4d8;
-  --paper-muted-foreground: #9a9184;
-  --paper-border: #34302a;
+  /* Paper stays light in both app themes on purpose (see :root's comment)
+     — it previews exported output, which is always white paper/dark ink
+     regardless of app theme, and its border color (table-cell-extension.ts)
+     must match document-store.ts's fixed DOCX border hex exactly. This
+     block used to redefine --paper/--paper-foreground/etc. for a dark
+     variant, which silently broke that invariant: table borders flipped
+     color with the app theme even though nothing else ever consumed these
+     vars. Intentionally no override here. */
 
   /* --- Status: error --- */
   --destructive: #c88b7e;
@@ -307,6 +310,116 @@
   }
 }
 
+/* Deliberately UNLAYERED (not inside @layer base). Tailwind declares the
+   order `theme, base, components, utilities`, and @tailwindcss/typography's
+   prose rules compile into `utilities` — which beats `base` regardless of
+   selector specificity, since layers are resolved before specificity.
+   Unlayered CSS beats every named layer, so this block is the only place
+   these declarations reliably win. Verified against the compiled stylesheet;
+   moving any of it back under @layer base silently reverts to Typography's
+   values (table-layout: auto, 2em margins, 0.857em font, 1px row borders). */
+
+/* Table structure: border-collapse avoids doubled borders where adjacent
+   cells both render a side; table-layout: fixed makes column drag-resize
+   (from @tiptap/extension-table's resizable: true) hold its width instead
+   of auto-shrinking to content. font-size/line-height are reset to inherit
+   because prose-sm shrinks table text to 0.857em, which would render tables
+   ~86% the size the DOCX export uses. Borders themselves come from each
+   cell's own borderTop/Right/Bottom/Left attrs (table-cell-extension.ts)
+   via inline style, not from this rule. */
+.prose.prose-sm table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Typography paints its own 1px bottom border on every row. Under
+   border-collapse, CSS's border-conflict resolution ranks `none` lowest
+   (CSS 2.1 §17.6.2.1), so that row border overrides a cell's own
+   `border-bottom: none` and borderless cells stay visibly bordered —
+   defeating the whole per-side border feature. Zeroing it here leaves
+   cell-level attrs as the only thing that can draw a border. Scoped to
+   `tbody tr` rather than a blanket `border: none` so the resize-handle and
+   selected-cell decorations below are left untouched. */
+.prose.prose-sm tbody tr {
+  border-bottom-width: 0;
+}
+
+.prose.prose-sm td {
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 4px 8px;
+  vertical-align: top;
+  position: relative;
+}
+
+/* paragraphSpacing's "None" option (paragraph-spacing-extension.ts) clears
+   the paragraph's spacingAfter attr to null, which renders NO inline style
+   at all — not an explicit 0 — so it falls through to prose.prose-sm p's
+   8pt top/bottom default (16pt total) below. That default is correct for
+   body text but swamps a table cell's own 4px padding. Cells default to
+   zero paragraph margin instead; an explicit spacingAfter value (inline
+   style) still overrides this normally, since inline style always beats a
+   stylesheet rule. */
+.prose.prose-sm td p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Editor-only hint for a cell side with its border turned off: a dotted
+   line so the boundary stays visible while editing (finding it again to
+   re-enable is otherwise guesswork), without appearing in Fill & Preview,
+   PDF, or DOCX — none of which render the `.editing-surface` wrapper class
+   (only EditTemplatePage's paper element carries it). `!important` is
+   required here specifically because inline style always outranks a normal
+   stylesheet rule regardless of selector specificity; a stylesheet rule can
+   only win over inline style by using `!important` itself. */
+.editing-surface td[data-border-top="off"] {
+  border-top-style: dotted !important;
+  border-top-color: var(--subtle-foreground) !important;
+}
+.editing-surface td[data-border-right="off"] {
+  border-right-style: dotted !important;
+  border-right-color: var(--subtle-foreground) !important;
+}
+.editing-surface td[data-border-bottom="off"] {
+  border-bottom-style: dotted !important;
+  border-bottom-color: var(--subtle-foreground) !important;
+}
+.editing-surface td[data-border-left="off"] {
+  border-left-style: dotted !important;
+  border-left-color: var(--subtle-foreground) !important;
+}
+
+/* Official @tiptap/extension-table recommended styling for its own
+   decorations: the resize-drag handle and the selected-cell highlight
+   overlay, both rendered by the extension itself, not by our node view. */
+.ProseMirror .column-resize-handle {
+  background-color: var(--ring);
+  bottom: -2px;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 4px;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+.ProseMirror .selectedCell::after {
+  background: color-mix(in srgb, var(--ring) 20%, transparent);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
 /* .paper-sheet's padding is the on-screen page margin, but under print
    (both PDF export via printToPDF and native Print via webContents.print)
    the main process now supplies the real page margin natively via the
@@ -325,6 +438,14 @@
        shrinking font size and leaving content short of the true page
        bottom. Matching the width to the printable area avoids any scaling. */
     width: var(--print-content-width) !important;
+    /* The on-screen inline min-height is the FULL page height (e.g. 1056px
+       for Letter), sized for the padded on-screen canvas. Under print,
+       Chromium's own margins option already reserves that space natively,
+       so the printable area is only usableHeight (height − 2×margins) tall
+       — a box still floored at the full page height can never fit, and
+       always overflows onto a second, essentially blank page. Letting the
+       box size to its actual content removes that forced overflow. */
+    min-height: 0 !important;
   }
 
   /* body's own bg-background (the app's cream canvas color) was never
