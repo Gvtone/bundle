@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "../ui/Button";
 import LinkButton from "../ui/LinkButton";
 import ActionMenuButton from "./ActionMenuButton";
@@ -40,9 +40,27 @@ function MainHeader() {
     setIsEditingName(true);
   }
 
+  // Committing a rename updates `meta` (in-memory) via updateMeta, but `save`
+  // still closes over whatever `meta` was at the time EditTemplatePage's own
+  // effect last registered it — calling save() synchronously right after
+  // updateMeta() would fire that stale closure and persist the OLD name.
+  // Waiting for meta.name to actually change confirms the effect re-ran and
+  // re-registered save() against the fresh meta before triggering it.
+  const pendingNameSaveRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingNameSaveRef.current) {
+      pendingNameSaveRef.current = false;
+      save?.();
+    }
+  }, [meta?.name, save]);
+
   function commitNameEdit() {
     const trimmed = nameDraft.trim();
-    if (trimmed) updateMeta(prev => ({ ...prev, name: trimmed }));
+    if (trimmed && trimmed !== meta?.name) {
+      updateMeta(prev => ({ ...prev, name: trimmed }));
+      pendingNameSaveRef.current = true;
+    }
     setIsEditingName(false);
   }
 

@@ -1,10 +1,12 @@
 export type PageSizeKey = "letter" | "a4" | "legal" | "folio" | "custom";
+export type PageOrientation = "portrait" | "landscape";
 
 export interface PageLayout {
   size: PageSizeKey;
   margins: number; // px at 96dpi
   customWidth?: number; // px at 96dpi, only used when size === "custom"
   customHeight?: number; // px at 96dpi, only used when size === "custom"
+  orientation?: PageOrientation; // undefined = portrait; ignored when size === "custom"
 }
 
 // Page size definitions — width/height in pixels at 96dpi (standard screen)
@@ -30,13 +32,20 @@ export function resolvePageDimensions(layout: PageLayout): {
   height: number;
   margins: number;
 } {
-  const { width, height } =
-    layout.size === "custom"
-      ? {
-          width: layout.customWidth ?? PAGE_SIZES.letter.width,
-          height: layout.customHeight ?? PAGE_SIZES.letter.height
-        }
-      : PAGE_SIZES[layout.size];
+  if (layout.size === "custom") {
+    return {
+      width: layout.customWidth ?? PAGE_SIZES.letter.width,
+      height: layout.customHeight ?? PAGE_SIZES.letter.height,
+      margins: layout.margins
+    };
+  }
 
-  return { width, height, margins: layout.margins };
+  const { width, height } = PAGE_SIZES[layout.size];
+  const landscape = layout.orientation === "landscape";
+
+  return {
+    width: landscape ? height : width,
+    height: landscape ? width : height,
+    margins: layout.margins
+  };
 }

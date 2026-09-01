@@ -4,7 +4,14 @@ import {
   Paragraph,
   TextRun,
   AlignmentType,
-  LevelFormat
+  LevelFormat,
+  Table,
+  TableRow,
+  TableCell,
+  BorderStyle,
+  WidthType,
+  PageOrientation,
+  HeightRule
 } from "docx";
 import type { ExportPayload, Placeholder } from "../shared/types";
 import { DATE_FORMATS } from "../shared/dateFormats";
@@ -201,13 +208,145 @@ function paragraphSpacingProps(node: TipTapNode) {
   };
 }
 
+// Distributes a table's content width across columns proportional to each
+// column's stored pixel width (set by @tiptap/extension-table's resizable:
+// true as the user drags a column border). Columns never manually resized
+// have no stored width, and instead split whatever space the resized columns
+// leave over — the same way a browser's `table-layout: fixed` divides
+// remaining width among columns with no explicit width. Averaging the known
+// widths instead would erase the user's edit in the most common case: resize
+// one column of three and all three come out equal. If no column was ever
+// resized, every column gets an equal share (unknownSharePx is uniform, so
+// the proportions work out even).
+function columnWidthsTwips(
+  firstRowCells: TipTapNode[],
+  contentWidthTwips: number
+): number[] {
+  const colWeightsPx: number[] = [];
+  for (const cell of firstRowCells) {
+    const span =
+      typeof cell.attrs?.["colspan"] === "number"
+        ? (cell.attrs["colspan"] as number)
+        : 1;
+    const stored = cell.attrs?.["colwidth"] as (number | null)[] | null | undefined;
+    for (let i = 0; i < span; i++) {
+      colWeightsPx.push(stored?.[i] ?? -1);
+    }
+  }
+
+  const knownPx = colWeightsPx.filter(w => w > 0);
+  const knownTotalPx = knownPx.reduce((sum, w) => sum + w, 0);
+  const unknownCount = colWeightsPx.filter(w => w === -1).length;
+  const contentWidthPx = contentWidthTwips / TWIPS_PER_PX;
+  const unknownSharePx =
+    unknownCount > 0
+      ? Math.max(0, contentWidthPx - knownTotalPx) / unknownCount
+      : 0;
+
+  const resolvedWeights = colWeightsPx.map(w => (w > 0 ? w : unknownSharePx));
+  const totalWeight = resolvedWeights.reduce((sum, w) => sum + w, 0);
+
+  return resolvedWeights.map(w =>
+    Math.round((w / totalWeight) * contentWidthTwips)
+  );
+}
+
+// Matches --paper-foreground's light-mode value (theme.css) — the "paper"
+// canvas is always light regardless of app theme, so borders/text on an
+// exported document should always use the light-mode text color, not
+// whatever the app's current (possibly dark) --foreground resolves to.
+const BORDER_COLOR_HEX = "2b2722";
+
+function borderProps(borderOn: unknown) {
+  return borderOn === false
+    ? { style: BorderStyle.NONE }
+    : { style: BorderStyle.SINGLE, size: 4, color: BORDER_COLOR_HEX };
+}
+
+// Keep in sync with theme.css's `.prose.prose-sm td` padding (4px vertical,
+// 8px horizontal) so DOCX cell spacing matches the on-screen/PDF preview.
+const CELL_MARGIN_VERTICAL_TWIPS = 4 * TWIPS_PER_PX;
+const CELL_MARGIN_HORIZONTAL_TWIPS = 8 * TWIPS_PER_PX;
+
+function tableNodeToTable(
+  node: TipTapNode,
+  placeholders: Placeholder[],
+  values: Record<string, string>,
+  contentWidthTwips: number
+): Table {
+  const rows = node.content ?? [];
+  const firstRowCells = rows[0]?.content ?? [];
+  const columnWidths = columnWidthsTwips(firstRowCells, contentWidthTwips);
+
+  const tableRows = rows.map(rowNode => {
+    const cells = rowNode.content ?? [];
+    let colIndex = 0;
+
+    const tableCells = cells.map(cellNode => {
+      const span =
+        typeof cellNode.attrs?.["colspan"] === "number"
+          ? (cellNode.attrs["colspan"] as number)
+          : 1;
+      const cellWidthTwips = columnWidths
+        .slice(colIndex, colIndex + span)
+        .reduce((sum, w) => sum + w, 0);
+      colIndex += span;
+
+      const children = blockNodesToParagraphs(
+        cellNode.content ?? [],
+        placeholders,
+        values,
+        cellWidthTwips
+      );
+
+      return new TableCell({
+        // docx requires at least one child per cell — an empty cell in the
+        // editor (no paragraphs yet) would otherwise produce an invalid document.
+        children: children.length > 0 ? children : [new Paragraph({})],
+        width: { size: cellWidthTwips, type: WidthType.DXA },
+        columnSpan: span > 1 ? span : undefined,
+        margins: {
+          top: CELL_MARGIN_VERTICAL_TWIPS,
+          bottom: CELL_MARGIN_VERTICAL_TWIPS,
+          left: CELL_MARGIN_HORIZONTAL_TWIPS,
+          right: CELL_MARGIN_HORIZONTAL_TWIPS
+        },
+        borders: {
+          top: borderProps(cellNode.attrs?.["borderTop"]),
+          right: borderProps(cellNode.attrs?.["borderRight"]),
+          bottom: borderProps(cellNode.attrs?.["borderBottom"]),
+          left: borderProps(cellNode.attrs?.["borderLeft"])
+        }
+      });
+    });
+
+    const rowHeightPx =
+      typeof rowNode.attrs?.["height"] === "number"
+        ? (rowNode.attrs["height"] as number)
+        : null;
+
+    return new TableRow({
+      children: tableCells,
+      height: rowHeightPx
+        ? { value: rowHeightPx * TWIPS_PER_PX, rule: HeightRule.ATLEAST }
+        : undefined
+    });
+  });
+
+  return new Table({
+    rows: tableRows,
+    width: { size: contentWidthTwips, type: WidthType.DXA }
+  });
+}
+
 function blockNodesToParagraphs(
   nodes: TipTapNode[],
   placeholders: Placeholder[],
   values: Record<string, string>,
+  contentWidthTwips: number,
   listContext?: ListContext
-): Paragraph[] {
-  const paragraphs: Paragraph[] = [];
+): (Paragraph | Table)[] {
+  const paragraphs: (Paragraph | Table)[] = [];
 
   for (const node of nodes) {
     if (node.type === "paragraph" || node.type === "heading") {
@@ -239,12 +378,19 @@ function blockNodesToParagraphs(
 
       for (const item of node.content ?? []) {
         paragraphs.push(
-          ...blockNodesToParagraphs(item.content ?? [], placeholders, values, {
-            kind,
-            depth
-          })
+          ...blockNodesToParagraphs(
+            item.content ?? [],
+            placeholders,
+            values,
+            contentWidthTwips,
+            { kind, depth }
+          )
         );
       }
+    } else if (node.type === "table") {
+      paragraphs.push(
+        tableNodeToTable(node, placeholders, values, contentWidthTwips)
+      );
     }
   }
 
@@ -253,16 +399,33 @@ function blockNodesToParagraphs(
 
 export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
   const doc = payload.content as TipTapNode;
-  const children = blockNodesToParagraphs(
-    doc.content ?? [],
-    payload.placeholders,
-    payload.values
-  );
 
   const dims = resolvePageDimensions(payload.pageLayout);
   const pageWidthTwips = dims.width * TWIPS_PER_PX;
   const pageHeightTwips = dims.height * TWIPS_PER_PX;
   const marginTwips = dims.margins * TWIPS_PER_PX;
+  const contentWidthTwips = pageWidthTwips - 2 * marginTwips;
+  const orientation =
+    dims.width > dims.height ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT;
+  // docx's own createPageSize() swaps width/height internally whenever
+  // orientation === LANDSCAPE (it expects the "intrinsic"/pre-rotation pair and
+  // does the rotation itself). resolvePageDimensions() already returns the
+  // post-rotation pair we use for content sizing, so passing that pair straight
+  // through here would make docx swap it a second time, yielding a <w:pgSz>
+  // whose w/h values contradict its own w:orient attribute (and no longer match
+  // contentWidthTwips, which is computed from the correct, already-rotated width
+  // above). Un-swap only for the values handed to docx's page size, to cancel
+  // out its internal swap.
+  const isLandscape = orientation === PageOrientation.LANDSCAPE;
+  const docxPageWidthTwips = isLandscape ? pageHeightTwips : pageWidthTwips;
+  const docxPageHeightTwips = isLandscape ? pageWidthTwips : pageHeightTwips;
+
+  const children = blockNodesToParagraphs(
+    doc.content ?? [],
+    payload.placeholders,
+    payload.values,
+    contentWidthTwips
+  );
 
   const document = new Document({
     styles: {
@@ -292,7 +455,7 @@ export async function buildDocx(payload: ExportPayload): Promise<Buffer> {
       {
         properties: {
           page: {
-            size: { width: pageWidthTwips, height: pageHeightTwips },
+            size: { width: docxPageWidthTwips, height: docxPageHeightTwips, orientation },
             margin: {
               top: marginTwips,
               right: marginTwips,

@@ -1,5 +1,6 @@
 // src/renderer/pages/EditTemplatePage.tsx
 import {
+  FileTextIcon,
   ListBulletsIcon,
   ListNumbersIcon,
   TextAlignCenterIcon,
@@ -12,15 +13,22 @@ import {
   WarningCircleIcon
 } from "@phosphor-icons/react";
 import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
+import type { ChainedCommands, Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
+import { Table } from "@tiptap/extension-table";
+import { CellSelection } from "@tiptap/pm/tables";
+import { NoHeaderTableRow } from "@/renderer/lib/table-row-extension";
+import { BorderedTableCell } from "@/renderer/lib/table-cell-extension";
+import { TableFullWidthGuard } from "@/renderer/lib/table-full-width-guard";
 import { NormalizedFontFamily } from "@/renderer/lib/font-family-extension";
 import { FontSize } from "@/renderer/lib/font-size-extension";
 import { ParagraphSpacing } from "@/renderer/lib/paragraph-spacing-extension";
 import PlaceholderCard from "../components/edit-template/PlaceholderCard";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Button from "../components/ui/Button";
+import TableInsertMenu from "../components/edit-template/TableInsertMenu";
 import { useTemplate } from "@/renderer/context/TemplateContext";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
 import { useEffect, useRef, useState } from "react";
@@ -35,6 +43,9 @@ import {
   type PageSizeKey
 } from "@/shared/pageLayout";
 import { usePageBreakOverlay } from "@/renderer/hooks/usePageBreakOverlay";
+import { useTableGridControls } from "@/renderer/hooks/useTableGridControls";
+import TableGridOverlay from "../components/edit-template/TableGridOverlay";
+import TableBorderPainter from "../components/edit-template/TableBorderPainter";
 import { useZoom } from "@/renderer/hooks/useZoom";
 import ZoomControl from "../components/ui/ZoomControl";
 import {
@@ -94,6 +105,10 @@ function EditTemplatePage() {
         NormalizedFontFamily,
         FontSize,
         ParagraphSpacing,
+        Table.configure({ resizable: true }),
+        NoHeaderTableRow,
+        BorderedTableCell,
+        TableFullWidthGuard,
         createPlaceholderExtension(PlaceholderChip)
       ],
       content: (content as object) ?? {
@@ -112,6 +127,7 @@ function EditTemplatePage() {
   const otherFonts = systemFonts.filter(f => !isSafeFont(f));
 
   const pageBreakLines = usePageBreakOverlay(editor, usableHeight, zoomFactor);
+  const tableGridControls = useTableGridControls(editor, zoomFactor);
 
   const editorState = useEditorState({
     editor,
@@ -121,6 +137,7 @@ function EditTemplatePage() {
       isUnderline: ctx.editor?.isActive("underline"),
       isBulletList: ctx.editor?.isActive("bulletList"),
       isOrderedList: ctx.editor?.isActive("orderedList"),
+      isInsideTable: ctx.editor?.isActive("table"),
       alignLeft: ctx.editor?.isActive({ textAlign: "left" }),
       alignCenter: ctx.editor?.isActive({ textAlign: "center" }),
       alignRight: ctx.editor?.isActive({ textAlign: "right" }),
@@ -247,57 +264,114 @@ function EditTemplatePage() {
 
   // Native <select> elements steal DOM focus more disruptively than a
   // same-page button, which can collapse the editor's selection (especially
-  // one spanning multiple list items) before the change handler runs.
-  // Capturing the range on mousedown (before that focus shift happens) lets
-  // us restore the actual highlighted range instead of trusting whatever
-  // editor.state.selection has become by the time onChange fires.
-  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
+  // one spanning multiple list items, or a CellSelection spanning multiple
+  // table cells) before the change handler runs. Capturing the selection on
+  // mousedown (before that focus shift happens) lets us restore it instead
+  // of trusting whatever editor.state.selection has become by the time
+  // onChange fires.
+  type SavedSelection =
+    | { type: "text"; from: number; to: number }
+    | { type: "cells"; anchorCellPos: number; headCellPos: number };
+
+  const savedSelectionRef = useRef<SavedSelection | null>(null);
 
   function captureSelection() {
     if (!editor) return;
-    savedSelectionRef.current = {
-      from: editor.state.selection.from,
-      to: editor.state.selection.to
-    };
+    const selection = editor.state.selection;
+    savedSelectionRef.current =
+      selection instanceof CellSelection
+        ? {
+            type: "cells",
+            anchorCellPos: selection.$anchorCell.pos,
+            headCellPos: selection.$headCell.pos
+          }
+        : { type: "text", from: selection.from, to: selection.to };
   }
 
-  function restoreSelectionChain() {
-    const chain = editor!.chain().focus();
-    return savedSelectionRef.current
-      ? chain.setTextSelection(savedSelectionRef.current)
-      : chain;
+  // A CellSelection has no single from/to text range — chain().setTextSelection()
+  // used to collapse it down to just the anchor/head cell's own range, which is
+  // why picking a font/size/spacing while multiple cells were selected only ever
+  // affected the one cell the cursor happened to be in. This applies `apply` to
+  // EVERY selected cell's content range within one transaction instead, then
+  // restores the multi-cell selection afterward so it doesn't look like it
+  // collapsed to a single cell on screen either.
+  function applyFormat(
+    editorInstance: Editor,
+    saved: SavedSelection | null,
+    apply: (chain: ChainedCommands) => ChainedCommands
+  ) {
+    if (saved?.type === "cells") {
+      const { anchorCellPos, headCellPos } = saved;
+      let chain = editorInstance.chain().focus();
+      const cellSelection = new CellSelection(
+        editorInstance.state.doc.resolve(anchorCellPos),
+        editorInstance.state.doc.resolve(headCellPos)
+      );
+      cellSelection.forEachCell((node, pos) => {
+        chain = apply(chain.setTextSelection({ from: pos + 1, to: pos + node.nodeSize - 1 }));
+      });
+      chain
+        .command(({ tr }) => {
+          tr.setSelection(
+            new CellSelection(tr.doc.resolve(anchorCellPos), tr.doc.resolve(headCellPos))
+          );
+          return true;
+        })
+        .run();
+      return;
+    }
+
+    const chain = editorInstance.chain().focus();
+    apply(saved ? chain.setTextSelection({ from: saved.from, to: saved.to }) : chain).run();
+  }
+
+  // For plain buttons (not native <select>s), a click doesn't steal DOM
+  // focus the way a <select> does, so editor.state.selection is still the
+  // live, intact CellSelection at click time — no captured ref needed.
+  function applyFormatToLiveSelection(
+    editorInstance: Editor,
+    apply: (chain: ChainedCommands) => ChainedCommands
+  ) {
+    const selection = editorInstance.state.selection;
+    const saved: SavedSelection | null =
+      selection instanceof CellSelection
+        ? {
+            type: "cells",
+            anchorCellPos: selection.$anchorCell.pos,
+            headCellPos: selection.$headCell.pos
+          }
+        : null;
+    applyFormat(editorInstance, saved, apply);
   }
 
   function handleFontChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (!editor) return;
     const value = e.target.value;
-    if (!value) {
-      restoreSelectionChain().unsetFontFamily().run();
-    } else {
-      restoreSelectionChain().setFontFamily(value).run();
-    }
+    applyFormat(editor, savedSelectionRef.current, chain =>
+      value ? chain.setFontFamily(value) : chain.unsetFontFamily()
+    );
   }
 
   function handleSizeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (!editor) return;
     const value = e.target.value;
-    if (!value) {
-      restoreSelectionChain().unsetFontSize().run();
-    } else {
-      restoreSelectionChain().setFontSize(`${value}pt`).run();
-    }
+    applyFormat(editor, savedSelectionRef.current, chain =>
+      value ? chain.setFontSize(`${value}pt`) : chain.unsetFontSize()
+    );
   }
 
   function handleLineHeightChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (!editor) return;
     const value = e.target.value;
-    restoreSelectionChain().setLineHeight(value || null).run();
+    applyFormat(editor, savedSelectionRef.current, chain => chain.setLineHeight(value || null));
   }
 
   function handleParagraphSpacingChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (!editor) return;
     const value = e.target.value;
-    restoreSelectionChain().setParagraphSpacing(value || null).run();
+    applyFormat(editor, savedSelectionRef.current, chain =>
+      chain.setParagraphSpacing(value || null)
+    );
   }
 
   return (
@@ -464,18 +538,26 @@ function EditTemplatePage() {
             <Button
               variant={editorState?.isBulletList ? "secondary" : "tertiary"}
               size="icon"
-              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              onClick={() =>
+                editor && applyFormatToLiveSelection(editor, chain => chain.toggleBulletList())
+              }
             >
               <ListBulletsIcon />
             </Button>
             <Button
               variant={editorState?.isOrderedList ? "secondary" : "tertiary"}
               size="icon"
-              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              onClick={() =>
+                editor && applyFormatToLiveSelection(editor, chain => chain.toggleOrderedList())
+              }
             >
               <ListNumbersIcon />
             </Button>
           </div>
+
+          {editor && (
+            <TableInsertMenu editor={editor} isInsideTable={editorState?.isInsideTable ?? false} />
+          )}
 
           <div className="self-stretch border-r border-border mx-1" />
 
@@ -496,6 +578,27 @@ function EditTemplatePage() {
             <option value="folio">Folio</option>
             <option value="custom">Custom</option>
           </select>
+
+          <Button
+            variant="tertiary"
+            size="icon"
+            disabled={pageSize === "custom"}
+            onClick={() =>
+              updatePageLayout(prev => ({
+                ...prev,
+                orientation: prev.orientation === "landscape" ? "portrait" : "landscape"
+              }))
+            }
+            title={pageLayout.orientation === "landscape" ? "Landscape" : "Portrait"}
+          >
+            <FileTextIcon
+              size={16}
+              weight="regular"
+              style={{
+                transform: pageLayout.orientation === "landscape" ? "rotate(90deg)" : undefined
+              }}
+            />
+          </Button>
 
           {pageSize === "custom" && (
             <div className="flex items-center gap-1 text-sm">
@@ -561,7 +664,7 @@ function EditTemplatePage() {
               className="h-full overflow-auto bg-background-sunken p-8"
             >
               <div
-                className="relative bg-white mx-auto shadow-md"
+                className="editing-surface relative bg-white mx-auto shadow-md"
                 style={{
                   width: `${currentPageSize.width}px`,
                   minHeight: `${currentPageSize.height}px`,
@@ -592,6 +695,23 @@ function EditTemplatePage() {
                     </div>
                   </div>
                 ))}
+
+                {editor && (
+                  <TableGridOverlay
+                    editor={editor}
+                    controls={tableGridControls}
+                    margins={margins}
+                    zoomFactor={zoomFactor}
+                  />
+                )}
+
+                {editor && (
+                  <TableBorderPainter
+                    editor={editor}
+                    margins={margins}
+                    zoomFactor={zoomFactor}
+                  />
+                )}
               </div>
             </div>
 

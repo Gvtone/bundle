@@ -18,17 +18,12 @@ import { savePreset, listPresets, deletePreset } from "./preset-store";
 import { buildDocx } from "./document-store";
 import { listSystemFonts } from "./system-fonts";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
-import { resolvePageDimensions } from "../shared/pageLayout";
+import { PAGE_SIZES, resolvePageDimensions } from "../shared/pageLayout";
 import type { PageLayout } from "../shared/pageLayout";
 import type { ExportPayload, FillValuesSnapshot } from "../shared/types";
 
-// Both PDF export and Print generate the PDF the same way — Print reuses
-// this instead of webContents.print(), whose page-size/margin fidelity
-// goes through the OS print pipeline (driver-dependent, e.g. "Microsoft
-// Print to PDF" snapping custom sizes to its own supported list) and
-// proved unreliable across two different unit conventions. printToPDF
-// generates the PDF directly, no OS/driver involvement, and is confirmed
-// correct.
+// PDF export always generates a real PDF this way — printToPDF, no OS/driver
+// involvement, confirmed correct.
 function pdfPrintOptions(pageDimensions: {
   width: number;
   height: number;
@@ -48,6 +43,38 @@ function pdfPrintOptions(pageDimensions: {
     },
     printBackground: true
   };
+}
+
+// webContents.print()'s pageSize only accepts a fixed enum ('A3'/'A4'/'A5'/
+// 'Legal'/'Letter'/'Tabloid') or a custom {width,height} IN MICRONS — a
+// different unit from printToPDF's inches (pdfPrintOptions above) and from
+// PageLayout's own px-at-96dpi (pageLayout.ts). Folio has no matching enum
+// entry, so it goes through the custom-Size branch, converted from the same
+// PAGE_SIZES.folio px values pageLayout.ts already defines (not hardcoded
+// twice) — Chromium validates/snaps custom sizes against the printer
+// driver's own supported list, a known reliability risk accepted
+// specifically for Folio. "custom" (the page-size option, not to be
+// confused with a custom pageSize Size object) isn't handled here at all —
+// see the size === "custom" branch in the print handler below, which keeps
+// the older PDF-then-open flow instead.
+const MICRONS_PER_PX_AT_96DPI = 25400 / 96;
+
+const NATIVE_PAGE_SIZE_NAMES: Record<"letter" | "a4" | "legal", "Letter" | "A4" | "Legal"> = {
+  letter: "Letter",
+  a4: "A4",
+  legal: "Legal"
+};
+
+function nativePageSize(
+  size: "letter" | "a4" | "legal" | "folio"
+): "Letter" | "A4" | "Legal" | { width: number; height: number } {
+  if (size === "folio") {
+    return {
+      width: Math.round(PAGE_SIZES.folio.width * MICRONS_PER_PX_AT_96DPI),
+      height: Math.round(PAGE_SIZES.folio.height * MICRONS_PER_PX_AT_96DPI)
+    };
+  }
+  return NATIVE_PAGE_SIZE_NAMES[size];
 }
 
 export function registerIpcHandlers() {
@@ -104,19 +131,54 @@ export function registerIpcHandlers() {
     async (event, pageLayout: PageLayout) => {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win) throw new Error("No window found for print request");
-      const pageDimensions = resolvePageDimensions(pageLayout);
 
-      const buffer = await win.webContents.printToPDF(
-        pdfPrintOptions(pageDimensions)
-      );
-      const tempPath = path.join(
-        os.tmpdir(),
-        `bundle-print-${randomUUID()}.pdf`
-      );
-      await fs.writeFile(tempPath, buffer);
+      if (pageLayout.size === "custom") {
+        // Electron's native print() validates a custom pageSize against the
+        // printer driver's own supported list and has previously proved
+        // unreliable for this app's Custom page size — keep generating a
+        // PDF and handing it to the OS's default viewer instead.
+        const pageDimensions = resolvePageDimensions(pageLayout);
+        const buffer = await win.webContents.printToPDF(
+          pdfPrintOptions(pageDimensions)
+        );
+        const tempPath = path.join(
+          os.tmpdir(),
+          `bundle-print-${randomUUID()}.pdf`
+        );
+        await fs.writeFile(tempPath, buffer);
 
-      const openError = await shell.openPath(tempPath);
-      if (openError) throw new Error(openError);
+        const openError = await shell.openPath(tempPath);
+        if (openError) throw new Error(openError);
+        return;
+      }
+
+      // Named sizes go through the real OS print dialog. print()'s margins
+      // are plain PIXELS (unlike printToPDF's inches above) — pageLayout.margins
+      // is already px at 96dpi, so no unit conversion is needed here at all.
+      // `size` is narrowed to a local const (not read as pageLayout.size
+      // below) because TS control-flow narrowing on a parameter doesn't
+      // persist inside the Promise executor closure.
+      const size = pageLayout.size;
+      await new Promise<void>((resolve, reject) => {
+        win.webContents.print(
+          {
+            pageSize: nativePageSize(size),
+            landscape: pageLayout.orientation === "landscape",
+            margins: {
+              marginType: "custom",
+              top: pageLayout.margins,
+              bottom: pageLayout.margins,
+              left: pageLayout.margins,
+              right: pageLayout.margins
+            },
+            printBackground: true
+          },
+          (success, failureReason) => {
+            if (success) resolve();
+            else reject(new Error(failureReason));
+          }
+        );
+      });
     }
   );
 
