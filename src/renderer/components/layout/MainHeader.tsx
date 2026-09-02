@@ -44,9 +44,11 @@ function MainHeader() {
   // still closes over whatever `meta` was at the time EditTemplatePage's own
   // effect last registered it — calling save() synchronously right after
   // updateMeta() would fire that stale closure and persist the OLD name.
-  // Waiting for meta.name to actually change confirms the effect re-ran and
-  // re-registered save() against the fresh meta before triggering it.
+  // Waiting for meta.name/category to actually change confirms the effect
+  // re-ran and re-registered save() against the fresh meta before
+  // triggering it.
   const pendingNameSaveRef = useRef(false);
+  const pendingCategorySaveRef = useRef(false);
 
   useEffect(() => {
     if (pendingNameSaveRef.current) {
@@ -54,6 +56,13 @@ function MainHeader() {
       save?.();
     }
   }, [meta?.name, save]);
+
+  useEffect(() => {
+    if (pendingCategorySaveRef.current) {
+      pendingCategorySaveRef.current = false;
+      save?.();
+    }
+  }, [meta?.category, save]);
 
   function commitNameEdit() {
     const trimmed = nameDraft.trim();
@@ -72,7 +81,10 @@ function MainHeader() {
 
   function commitCategoryEdit() {
     const trimmed = categoryDraft.trim();
-    if (trimmed) updateMeta(prev => ({ ...prev, category: trimmed }));
+    if (trimmed && trimmed !== meta?.category) {
+      updateMeta(prev => ({ ...prev, category: trimmed }));
+      pendingCategorySaveRef.current = true;
+    }
     setIsEditingCategory(false);
   }
 
