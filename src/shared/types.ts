@@ -1,6 +1,11 @@
 import type { PageLayout } from "./pageLayout";
 
-export type DateFormatKey = "long";
+export type DateFormatKey =
+  | "long"
+  | "short"
+  | "numeric"
+  | "iso"
+  | "dayFirst";
 
 export interface PlaceholderStyle {
   bold: boolean;

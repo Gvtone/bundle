@@ -7,5 +7,6 @@
 // can't import these).
 export const DEFAULT_FONT_FAMILY = "Calibri";
 export const DEFAULT_FONT_SIZE_PT = 11;
-export const DEFAULT_LINE_HEIGHT = 1.08;
-export const DEFAULT_PARAGRAPH_SPACING_PT = 8;
+export const DEFAULT_LINE_HEIGHT = 1.15;
+export const DEFAULT_SPACING_BEFORE_PT = 0;
+export const DEFAULT_SPACING_AFTER_PT = 8;

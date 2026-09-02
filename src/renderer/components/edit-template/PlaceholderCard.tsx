@@ -43,15 +43,15 @@ function PlaceholderCard({
   return (
     <div className="rounded-lg bg-card-muted p-4">
       <div className="flex flex-col gap-2 ">
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center gap-2">
           <p
-            className="text-[10px] bg-primary-soft p-1 rounded-sm font-bundle-serif truncate min-w-0 flex items-center"
+            className="text-[10px] bg-primary-soft p-1 rounded-sm font-bundle-serif truncate min-w-0 max-w-[60%]"
             title={`{{${placeholder.key}}}`}
           >
             {`{{${placeholder.key}}}`}
           </p>
 
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center shrink-0">
             <p className="text-xs shrink-0">
               {useCount} {useCount === 1 ? "use" : "uses"}
             </p>

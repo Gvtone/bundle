@@ -57,7 +57,8 @@ import { useSystemFonts } from "@/renderer/hooks/useSystemFonts";
 import {
   DEFAULT_FONT_SIZE_PT,
   DEFAULT_LINE_HEIGHT,
-  DEFAULT_PARAGRAPH_SPACING_PT
+  DEFAULT_SPACING_BEFORE_PT,
+  DEFAULT_SPACING_AFTER_PT
 } from "@/shared/documentDefaults";
 
 const LINE_HEIGHT_OPTIONS = [
@@ -67,7 +68,7 @@ const LINE_HEIGHT_OPTIONS = [
   { label: "Double", value: "2" }
 ];
 
-const PARAGRAPH_SPACING_OPTIONS = [
+const SPACING_OPTIONS = [
   { label: "None", value: "0pt" },
   { label: "6pt", value: "6pt" },
   { label: "8pt", value: "8pt" },
@@ -148,9 +149,15 @@ function EditTemplatePage() {
       currentLineHeight: ctx.editor?.isActive("heading")
         ? (ctx.editor?.getAttributes("heading")["lineHeight"] ?? "")
         : (ctx.editor?.getAttributes("paragraph")["lineHeight"] ?? ""),
-      currentSpacing: ctx.editor?.isActive("heading")
+      currentSpacingBefore: ctx.editor?.isActive("heading")
+        ? (ctx.editor?.getAttributes("heading")["spacingBefore"] ?? "")
+        : (ctx.editor?.getAttributes("paragraph")["spacingBefore"] ?? ""),
+      currentSpacingAfter: ctx.editor?.isActive("heading")
         ? (ctx.editor?.getAttributes("heading")["spacingAfter"] ?? "")
-        : (ctx.editor?.getAttributes("paragraph")["spacingAfter"] ?? "")
+        : (ctx.editor?.getAttributes("paragraph")["spacingAfter"] ?? ""),
+      currentContextualSpacing: ctx.editor?.isActive("heading")
+        ? (ctx.editor?.getAttributes("heading")["contextualSpacing"] ?? true)
+        : (ctx.editor?.getAttributes("paragraph")["contextualSpacing"] ?? true)
     })
   });
 
@@ -366,11 +373,27 @@ function EditTemplatePage() {
     applyFormat(editor, savedSelectionRef.current, chain => chain.setLineHeight(value || null));
   }
 
-  function handleParagraphSpacingChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  function handleSpacingBeforeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (!editor) return;
     const value = e.target.value;
     applyFormat(editor, savedSelectionRef.current, chain =>
-      chain.setParagraphSpacing(value || null)
+      chain.setSpacingBefore(value || null)
+    );
+  }
+
+  function handleSpacingAfterChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!editor) return;
+    const value = e.target.value;
+    applyFormat(editor, savedSelectionRef.current, chain =>
+      chain.setSpacingAfter(value || null)
+    );
+  }
+
+  function handleContextualSpacingChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!editor) return;
+    const value = e.target.checked;
+    applyFormat(editor, savedSelectionRef.current, chain =>
+      chain.setContextualSpacing(value)
     );
   }
 
@@ -476,20 +499,51 @@ function EditTemplatePage() {
             ))}
           </select>
 
-          {/* Paragraph spacing */}
+          {/* Spacing before */}
           <select
-            value={editorState?.currentSpacing ?? ""}
+            value={editorState?.currentSpacingBefore ?? ""}
             onMouseDown={captureSelection}
-            onChange={handleParagraphSpacingChange}
+            onChange={handleSpacingBeforeChange}
+            title="Spacing before paragraph"
             className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
           >
-            <option value="">{DEFAULT_PARAGRAPH_SPACING_PT}pt (Default)</option>
-            {PARAGRAPH_SPACING_OPTIONS.map(o => (
+            <option value="">{DEFAULT_SPACING_BEFORE_PT}pt before (Default)</option>
+            {SPACING_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {o.label} before
               </option>
             ))}
           </select>
+
+          {/* Spacing after */}
+          <select
+            value={editorState?.currentSpacingAfter ?? ""}
+            onMouseDown={captureSelection}
+            onChange={handleSpacingAfterChange}
+            title="Spacing after paragraph"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
+          >
+            <option value="">{DEFAULT_SPACING_AFTER_PT}pt after (Default)</option>
+            {SPACING_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>
+                {o.label} after
+              </option>
+            ))}
+          </select>
+
+          {/* Contextual spacing (Word's "Don't add space between paragraphs of the same style") */}
+          <label
+            className="flex items-center gap-1.5 text-sm px-2 py-1 cursor-pointer select-none"
+            title="Don't add space between paragraphs of the same style — matches Word's paragraph spacing checkbox. Only affects the exported DOCX; the on-screen preview already collapses adjacent spacing."
+          >
+            <input
+              type="checkbox"
+              checked={editorState?.currentContextualSpacing ?? true}
+              onMouseDown={captureSelection}
+              onChange={handleContextualSpacingChange}
+            />
+            No space between same style
+          </label>
 
           <div className="self-stretch border-r border-border mx-1" />
 

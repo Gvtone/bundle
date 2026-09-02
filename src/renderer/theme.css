@@ -288,26 +288,6 @@
     margin-top: 0;
   }
 
-  /* Document text defaults — matches Microsoft Word's modern "Normal" style
-     (Calibri, 11pt, 1.08 line height, 8pt paragraph spacing) so templates
-     look Word-familiar out of the box, overriding Tailwind Typography's own
-     prose-sm scale (tuned for UI reading, not a printable document). Keep
-     these numbers in sync with src/shared/documentDefaults.ts — CSS can't
-     import those constants directly. Only .prose.prose-sm is used by the
-     three document-rendering surfaces (EditTemplatePage, FillAndPreviewPage,
-     PreviewPageSheet), so this is safely scoped to document text only.
-     Symmetric before/after spacing is a known compromise vs. Word's true
-     asymmetric 0pt-before/8pt-after — see document-store.ts. */
-  .prose.prose-sm {
-    font-family: Calibri;
-    font-size: 11pt;
-    line-height: 1.08;
-  }
-
-  .prose.prose-sm p {
-    margin-top: 8pt;
-    margin-bottom: 8pt;
-  }
 }
 
 /* Deliberately UNLAYERED (not inside @layer base). Tailwind declares the
@@ -318,6 +298,30 @@
    these declarations reliably win. Verified against the compiled stylesheet;
    moving any of it back under @layer base silently reverts to Typography's
    values (table-layout: auto, 2em margins, 0.857em font, 1px row borders). */
+
+/* Document text defaults — matches Microsoft Word's modern "Normal" style
+   (Calibri, 11pt, 1.15 line height, 0pt before/8pt after paragraph
+   spacing) so templates look Word-familiar out of the box, overriding
+   Tailwind Typography's own prose-sm scale (tuned for UI reading, not a
+   printable document). Keep these numbers in sync with
+   src/shared/documentDefaults.ts — CSS can't import those constants
+   directly. Only .prose.prose-sm is used by the three document-rendering
+   surfaces (EditTemplatePage, FillAndPreviewPage, PreviewPageSheet), so
+   this is safely scoped to document text only. This previously lived
+   inside @layer base, where Typography's own utilities silently outrank
+   it — before/line-height leaked Typography's non-zero defaults instead
+   of these values; only after (which happens to sit close to Typography's
+   own default) looked correct by coincidence. */
+.prose.prose-sm {
+  font-family: Calibri;
+  font-size: 11pt;
+  line-height: 1.15;
+}
+
+.prose.prose-sm p {
+  margin-top: 0pt;
+  margin-bottom: 8pt;
+}
 
 /* Table structure: border-collapse avoids doubled borders where adjacent
    cells both render a side; table-layout: fixed makes column drag-resize
@@ -357,13 +361,13 @@
 }
 
 /* paragraphSpacing's "None" option (paragraph-spacing-extension.ts) clears
-   the paragraph's spacingAfter attr to null, which renders NO inline style
-   at all — not an explicit 0 — so it falls through to prose.prose-sm p's
-   8pt top/bottom default (16pt total) below. That default is correct for
-   body text but swamps a table cell's own 4px padding. Cells default to
-   zero paragraph margin instead; an explicit spacingAfter value (inline
-   style) still overrides this normally, since inline style always beats a
-   stylesheet rule. */
+   the paragraph's spacingBefore/spacingAfter attrs to null, which renders NO
+   inline style at all — not an explicit 0 — so it falls through to
+   prose.prose-sm p's 8pt top/bottom default (16pt total) below. That default
+   is correct for body text but swamps a table cell's own 4px padding. Cells
+   default to zero paragraph margin instead; an explicit spacingBefore/
+   spacingAfter value (inline style) still overrides this normally, since
+   inline style always beats a stylesheet rule. */
 .prose.prose-sm td p {
   margin-top: 0;
   margin-bottom: 0;

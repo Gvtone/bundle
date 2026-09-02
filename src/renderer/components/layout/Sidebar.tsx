@@ -1,25 +1,40 @@
 import {
   CaretLeftIcon,
   CaretRightIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  TrashIcon
 } from "@phosphor-icons/react";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { cn } from "@/renderer/utils/utils";
 import LinkButton from "../ui/LinkButton";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
 import { Template } from "@/shared/types";
 import { relativeTime } from "@/renderer/utils/relativeTime";
 import NewTemplateButton from "./NewTemplateButton";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 function Sidebar() {
   const { templateId } = useParams();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [templateSearch, setTemplateSearch] = useState("");
   const [debouncedTemplateSearch, setDebouncedTemplateSearch] = useState("");
-  const { templates } = useTemplates();
+  const [pendingDelete, setPendingDelete] = useState<Template | null>(null);
+  const { templates, refetch } = useTemplates();
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    const deletedId = pendingDelete.id;
+    await window.bundle.deleteTemplate(deletedId);
+    setPendingDelete(null);
+    refetch();
+    if (templateId === deletedId) {
+      navigate("/");
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(
@@ -107,35 +122,63 @@ function Sidebar() {
 
               {/* 3. Inner loop for templates inside this specific category */}
               {categoryTemplates.map(template => (
-                <LinkButton
-                  key={template.id}
-                  to={`templates/${template.id}/edit`}
-                  variant="tertiary"
-                  fullWidth
-                  className={!isSidebarOpen ? "size-10" : "px-5 py-2.5"}
-                  active={template.id === templateId}
-                >
-                  {isSidebarOpen ? (
-                    <div className="w-full">
-                      <p className="truncate font-semibold text-primary-soft-foreground text-sm">
-                        {template.name}
+                <div key={template.id} className="group relative flex items-center">
+                  <LinkButton
+                    to={`templates/${template.id}/edit`}
+                    variant="tertiary"
+                    fullWidth
+                    className={cn(
+                      !isSidebarOpen ? "size-10" : "px-5 py-2.5",
+                      isSidebarOpen && "pr-9"
+                    )}
+                    active={template.id === templateId}
+                  >
+                    {isSidebarOpen ? (
+                      <div className="w-full min-w-0">
+                        <p className="truncate font-semibold text-primary-soft-foreground text-sm">
+                          {template.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {relativeTime(template.createdAt)}
+                        </p>
+                      </div>
+                    ) : (
+                      // Fallback letter when sidebar is collapsed (e.g., first letter of template name)
+                      <p className="text-xs font-semibold">
+                        {template.name.charAt(0).toUpperCase()}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {relativeTime(template.createdAt)}
-                      </p>
-                    </div>
-                  ) : (
-                    // Fallback letter when sidebar is collapsed (e.g., first letter of template name)
-                    <p className="text-xs font-semibold">
-                      {template.name.charAt(0).toUpperCase()}
-                    </p>
+                    )}
+                  </LinkButton>
+
+                  {isSidebarOpen && (
+                    <Button
+                      variant="muted"
+                      size="icon"
+                      className="absolute right-1.5 opacity-0 group-hover:opacity-100"
+                      onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setPendingDelete(template);
+                      }}
+                    >
+                      <TrashIcon />
+                    </Button>
                   )}
-                </LinkButton>
+                </div>
               ))}
             </div>
           )
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete template"
+        description={`Delete "${pendingDelete?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </aside>
   );
 }

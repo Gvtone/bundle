@@ -20,7 +20,8 @@ import {
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE_PT,
   DEFAULT_LINE_HEIGHT,
-  DEFAULT_PARAGRAPH_SPACING_PT
+  DEFAULT_SPACING_BEFORE_PT,
+  DEFAULT_SPACING_AFTER_PT
 } from "../shared/documentDefaults";
 
 // 1px @ 96dpi = 1/96 inch = 1440/96 = 15 twips (docx's unit).
@@ -28,15 +29,14 @@ const TWIPS_PER_PX = 15;
 const ORDERED_LIST_REFERENCE = "ordered-list";
 const MAX_LIST_DEPTH = 3;
 const DEFAULT_RUN_SIZE_HALF_POINTS = DEFAULT_FONT_SIZE_PT * 2; // fallback for text with no explicit size mark
-// Fallback values for a paragraph with no explicit lineHeight/spacingAfter
-// attrs (set via the editor's Line spacing / Paragraph spacing controls) —
-// matches the on-screen/PDF preview's `.prose.prose-sm` override in
-// theme.css, which targets Word's "Normal" style defaults. Applied
-// symmetrically to both before/after (see spacing comment below) rather
-// than Word's true asymmetric 0pt-before/8pt-after — independent before/
-// after support is a follow-up, not yet built.
+// Fallback values for a paragraph with no explicit lineHeight/spacingBefore/
+// spacingAfter attrs (set via the editor's Line spacing / Spacing before /
+// Spacing after controls) — matches Word's modern "Normal" style (0pt
+// before, 8pt after, 1.15 line height) and the on-screen/PDF preview's
+// `.prose.prose-sm` override in theme.css. Each can be overridden
+// independently once a control sets an explicit spacingBefore/spacingAfter
+// attr.
 const DEFAULT_LINE_HEIGHT_RATIO = DEFAULT_LINE_HEIGHT;
-const DEFAULT_SPACING_PT = DEFAULT_PARAGRAPH_SPACING_PT;
 
 interface TipTapMark {
   type: string;
@@ -180,31 +180,45 @@ interface ListContext {
   depth: number;
 }
 
-// contextualSpacing mirrors CSS's adjacent-sibling margin collapsing — without
-// it, Word sums consecutive paragraphs' before+after instead of collapsing to
-// one value like the preview shows, doubling document height and overflowing
-// onto extra pages. Not applied to list items — Typography gives those their
-// own tighter, different spacing that this would visibly over-space relative
-// to the preview.
+// contextualSpacing mirrors Word's "Don't add space between paragraphs of
+// the same style" checkbox (toggled per-paragraph via the toolbar, defaults
+// to on/true) — without it, Word sums consecutive paragraphs' before+after
+// instead of collapsing them like CSS's adjacent-sibling margin collapsing
+// does in the preview, doubling document height and overflowing onto extra
+// pages. Not applied to list items — Typography gives those their own
+// tighter, different spacing that this would visibly over-space relative to
+// the preview.
 function paragraphSpacingProps(node: TipTapNode) {
   const lineHeightRaw = node.attrs?.["lineHeight"];
-  const spacingRaw = node.attrs?.["spacingAfter"];
+  const spacingBeforeRaw = node.attrs?.["spacingBefore"];
+  const spacingAfterRaw = node.attrs?.["spacingAfter"];
+  const contextualSpacing = node.attrs?.["contextualSpacing"] !== false;
 
   const ratio =
     typeof lineHeightRaw === "string" && lineHeightRaw
       ? parseFloat(lineHeightRaw)
       : DEFAULT_LINE_HEIGHT_RATIO;
-  const spacingPt =
-    typeof spacingRaw === "string" && spacingRaw
-      ? parseFloat(spacingRaw.replace("pt", ""))
-      : DEFAULT_SPACING_PT;
+  const spacingBeforePt =
+    typeof spacingBeforeRaw === "string" && spacingBeforeRaw
+      ? parseFloat(spacingBeforeRaw.replace("pt", ""))
+      : DEFAULT_SPACING_BEFORE_PT;
+  const spacingAfterPt =
+    typeof spacingAfterRaw === "string" && spacingAfterRaw
+      ? parseFloat(spacingAfterRaw.replace("pt", ""))
+      : DEFAULT_SPACING_AFTER_PT;
 
-  const twips = Math.round(spacingPt * 20); // 1pt = 20 twips
+  const twipsBefore = Math.round(spacingBeforePt * 20); // 1pt = 20 twips
+  const twipsAfter = Math.round(spacingAfterPt * 20);
   const line = Math.round(ratio * 240); // Word's "auto" line-rule: 240 = single line
 
   return {
-    spacing: { before: twips, after: twips, line, lineRule: "auto" as const },
-    contextualSpacing: true
+    spacing: {
+      before: twipsBefore,
+      after: twipsAfter,
+      line,
+      lineRule: "auto" as const
+    },
+    contextualSpacing
   };
 }
 
