@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow, dialog, shell } from "electron";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import {
   saveTemplate,
@@ -17,8 +18,9 @@ import {
 import { savePreset, listPresets, deletePreset } from "./preset-store";
 import { buildDocx } from "./document-store";
 import { listSystemFonts } from "./system-fonts";
+import { parseDocxFile } from "./docx-import";
 import { sanitizeFilename } from "../shared/sanitizeFilename";
-import { PAGE_SIZES, resolvePageDimensions } from "../shared/pageLayout";
+import { resolvePageDimensions } from "../shared/pageLayout";
 import type { PageLayout } from "../shared/pageLayout";
 import type { ExportPayload, FillValuesSnapshot } from "../shared/types";
 
@@ -45,36 +47,57 @@ function pdfPrintOptions(pageDimensions: {
   };
 }
 
-// webContents.print()'s pageSize only accepts a fixed enum ('A3'/'A4'/'A5'/
-// 'Legal'/'Letter'/'Tabloid') or a custom {width,height} IN MICRONS — a
-// different unit from printToPDF's inches (pdfPrintOptions above) and from
-// PageLayout's own px-at-96dpi (pageLayout.ts). Folio has no matching enum
-// entry, so it goes through the custom-Size branch, converted from the same
-// PAGE_SIZES.folio px values pageLayout.ts already defines (not hardcoded
-// twice) — Chromium validates/snaps custom sizes against the printer
-// driver's own supported list, a known reliability risk accepted
-// specifically for Folio. "custom" (the page-size option, not to be
-// confused with a custom pageSize Size object) isn't handled here at all —
-// see the size === "custom" branch in the print handler below, which keeps
-// the older PDF-then-open flow instead.
-const MICRONS_PER_PX_AT_96DPI = 25400 / 96;
+// Prints a PDF buffer silently (no OS dialog) by loading it into a hidden
+// window and calling print() there. The margins are already baked into the
+// PDF from the printToPDF call that produced it (correct, inches-based —
+// see pdfPrintOptions above), so marginType:"none" here just means "don't
+// add another layer of margin on top" — it isn't a numeric unit, sidestepping
+// the print()-margins-are-in-undocumented-pixels problem entirely. Electron's
+// built-in PDF viewer (enabled via webPreferences.plugins) renders the file
+// so print() has a printable document to act on.
+async function printPdfSilently(
+  buffer: Buffer,
+  deviceName?: string,
+  copies?: number
+): Promise<void> {
+  const tempPath = path.join(os.tmpdir(), `bundle-print-${randomUUID()}.pdf`);
+  await fs.writeFile(tempPath, buffer);
 
-const NATIVE_PAGE_SIZE_NAMES: Record<"letter" | "a4" | "legal", "Letter" | "A4" | "Legal"> = {
-  letter: "Letter",
-  a4: "A4",
-  legal: "Legal"
-};
+  const printWindow = new BrowserWindow({
+    show: false,
+    webPreferences: { plugins: true }
+  });
 
-function nativePageSize(
-  size: "letter" | "a4" | "legal" | "folio"
-): "Letter" | "A4" | "Legal" | { width: number; height: number } {
-  if (size === "folio") {
-    return {
-      width: Math.round(PAGE_SIZES.folio.width * MICRONS_PER_PX_AT_96DPI),
-      height: Math.round(PAGE_SIZES.folio.height * MICRONS_PER_PX_AT_96DPI)
-    };
+  try {
+    await printWindow.loadURL(pathToFileURL(tempPath).toString());
+    // Electron's built-in PDF viewer is itself a page that finishes loading
+    // (did-finish-load, resolved by loadURL above) before the PDF plugin it
+    // hosts has actually painted the document — printing immediately is a
+    // long-documented Electron/Chromium race that silently produces a
+    // blank page (see electron/electron#30947, #26448). There's no reliable
+    // "PDF finished rendering" event to await instead, so this grace delay
+    // is the same workaround used in practice by other Electron apps hitting
+    // this race.
+    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise<void>((resolve, reject) => {
+      printWindow.webContents.print(
+        {
+          silent: true,
+          deviceName,
+          copies: copies && copies > 0 ? copies : 1,
+          printBackground: true,
+          margins: { marginType: "none" }
+        },
+        (success, failureReason) => {
+          if (success || failureReason === "Print job canceled") resolve();
+          else reject(new Error(failureReason));
+        }
+      );
+    });
+  } finally {
+    printWindow.destroy();
+    await fs.unlink(tempPath).catch(() => {});
   }
-  return NATIVE_PAGE_SIZE_NAMES[size];
 }
 
 export function registerIpcHandlers() {
@@ -92,6 +115,26 @@ export function registerIpcHandlers() {
 
   ipcMain.handle("template:delete", async (_event, id: string) => {
     return deleteTemplate(id);
+  });
+
+  ipcMain.handle("template:import-docx", async event => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) throw new Error("No window found for import request");
+
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ["openFile"],
+      filters: [{ name: "Word Document", extensions: ["docx"] }]
+    });
+    if (canceled || !filePaths[0]) return null;
+
+    try {
+      const buffer = await fs.readFile(filePaths[0]);
+      return await parseDocxFile(buffer, filePaths[0]);
+    } catch {
+      throw new Error(
+        "Could not read that Word document — it may be corrupted or in an unsupported format."
+      );
+    }
   });
 
   ipcMain.handle("document:export", async (event, payload: ExportPayload) => {
@@ -128,19 +171,28 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     "document:print",
-    async (event, pageLayout: PageLayout) => {
+    async (
+      event,
+      pageLayout: PageLayout,
+      deviceName?: string,
+      copies?: number
+    ) => {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win) throw new Error("No window found for print request");
 
+      // Every size prints through the same proven, inches-based printToPDF
+      // pipeline used for PDF export — no more native print()-margin
+      // ambiguity. Custom keeps the older PDF-then-open flow (unaffected by
+      // this redesign, and Chromium's print() has previously proved
+      // unreliable validating a custom pageSize against the printer
+      // driver's own supported list); named sizes print silently via a
+      // hidden window instead of surfacing the OS dialog.
+      const pageDimensions = resolvePageDimensions(pageLayout);
+      const buffer = await win.webContents.printToPDF(
+        pdfPrintOptions(pageDimensions)
+      );
+
       if (pageLayout.size === "custom") {
-        // Electron's native print() validates a custom pageSize against the
-        // printer driver's own supported list and has previously proved
-        // unreliable for this app's Custom page size — keep generating a
-        // PDF and handing it to the OS's default viewer instead.
-        const pageDimensions = resolvePageDimensions(pageLayout);
-        const buffer = await win.webContents.printToPDF(
-          pdfPrintOptions(pageDimensions)
-        );
         const tempPath = path.join(
           os.tmpdir(),
           `bundle-print-${randomUUID()}.pdf`
@@ -152,35 +204,20 @@ export function registerIpcHandlers() {
         return;
       }
 
-      // Named sizes go through the real OS print dialog. print()'s margins
-      // are plain PIXELS (unlike printToPDF's inches above) — pageLayout.margins
-      // is already px at 96dpi, so no unit conversion is needed here at all.
-      // `size` is narrowed to a local const (not read as pageLayout.size
-      // below) because TS control-flow narrowing on a parameter doesn't
-      // persist inside the Promise executor closure.
-      const size = pageLayout.size;
-      await new Promise<void>((resolve, reject) => {
-        win.webContents.print(
-          {
-            pageSize: nativePageSize(size),
-            landscape: pageLayout.orientation === "landscape",
-            margins: {
-              marginType: "custom",
-              top: pageLayout.margins,
-              bottom: pageLayout.margins,
-              left: pageLayout.margins,
-              right: pageLayout.margins
-            },
-            printBackground: true
-          },
-          (success, failureReason) => {
-            if (success) resolve();
-            else reject(new Error(failureReason));
-          }
-        );
-      });
+      await printPdfSilently(buffer, deviceName, copies);
     }
   );
+
+  ipcMain.handle("document:list-printers", async event => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) throw new Error("No window found for printer list request");
+
+    const printers = await win.webContents.getPrintersAsync();
+    return printers.map(p => ({
+      name: p.name,
+      displayName: p.displayName
+    }));
+  });
 
   ipcMain.handle("document:choose-folder", async event => {
     const win = BrowserWindow.fromWebContents(event.sender);

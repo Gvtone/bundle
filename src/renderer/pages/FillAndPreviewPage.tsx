@@ -5,6 +5,7 @@ import { createFillPreviewExtensions } from "@/renderer/lib/fill-preview-extensi
 import { usePageSlices } from "@/renderer/hooks/usePageSlices";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import PrintDialog from "../components/ui/PrintDialog";
 import ValueInputCard from "../components/fill-and-preview/ValueInputCard";
 import RowSelector from "../components/fill-and-preview/RowSelector";
 import PresetDropdown from "../components/fill-and-preview/PresetDropdown";
@@ -18,7 +19,7 @@ import {
   FillValuesProvider,
   useFillValues
 } from "@/renderer/context/FillValuesContext";
-import type { ExportFormat, Preset } from "@/shared/types";
+import type { ExportFormat, Preset, PrinterInfo } from "@/shared/types";
 import { DEFAULT_PAGE_LAYOUT, resolvePageDimensions } from "@/shared/pageLayout";
 
 function FillAndPreviewPage() {
@@ -73,6 +74,12 @@ function FillAndPreviewContent() {
     "export-current" | "export-all" | "print-current" | "print-all" | null
   >(null);
   const [isMergedPrintActive, setIsMergedPrintActive] = useState(false);
+  const [printFlow, setPrintFlow] = useState<"current" | "all" | null>(null);
+  const [printers, setPrinters] = useState<PrinterInfo[]>([]);
+  const [printersLoading, setPrintersLoading] = useState(false);
+  const [selectedPrinter, setSelectedPrinter] = useState("");
+  const [copies, setCopies] = useState(1);
+  const [printing, setPrinting] = useState(false);
 
   const paperRef = useRef<HTMLDivElement>(null);
   const mergedPrintRef = useRef<HTMLDivElement>(null);
@@ -169,15 +176,46 @@ function FillAndPreviewContent() {
     }
   }
 
-  async function runPrint() {
+  async function runPrint(deviceName?: string, printCopies?: number) {
     try {
       setIsCapturingSnapshot(true);
       await waitForPaint();
-      await window.bundle.printDocument(pageLayout);
+      await window.bundle.printDocument(pageLayout, deviceName, printCopies);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Print failed");
     } finally {
       setIsCapturingSnapshot(false);
+    }
+  }
+
+  // Custom page size keeps the old PDF-then-open flow (unaffected by the
+  // printer-picker redesign), so it skips straight to printing. Named sizes
+  // print silently through a chosen printer, so the user picks one first.
+  function openPrintFlow(mode: "current" | "all") {
+    if (pageLayout.size === "custom") {
+      if (mode === "current") runPrint();
+      else runPrintAll();
+      return;
+    }
+
+    setPrintFlow(mode);
+    setCopies(1);
+    setPrintersLoading(true);
+    window.bundle.listPrinters().then(list => {
+      setPrinters(list);
+      setSelectedPrinter(list[0]?.name ?? "");
+      setPrintersLoading(false);
+    });
+  }
+
+  async function handleConfirmPrint() {
+    setPrinting(true);
+    try {
+      if (printFlow === "current") await runPrint(selectedPrinter, copies);
+      else if (printFlow === "all") await runPrintAll(selectedPrinter, copies);
+    } finally {
+      setPrinting(false);
+      setPrintFlow(null);
     }
   }
 
@@ -234,7 +272,7 @@ function FillAndPreviewContent() {
     }
   }
 
-  async function runPrintAll() {
+  async function runPrintAll(deviceName?: string, printCopies?: number) {
     if (!meta || rowCountMismatch) return;
     const container = mergedPrintRef.current;
     if (!container) return;
@@ -260,7 +298,7 @@ function FillAndPreviewContent() {
       }
 
       await waitForPaint();
-      await window.bundle.printDocument(pageLayout);
+      await window.bundle.printDocument(pageLayout, deviceName, printCopies);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Print failed");
     } finally {
@@ -292,7 +330,7 @@ function FillAndPreviewContent() {
       if (blankPlaceholders.length > 0) {
         setPendingAction("print-current");
       } else {
-        runPrint();
+        openPrintFlow("current");
       }
     });
 
@@ -321,7 +359,7 @@ function FillAndPreviewContent() {
               if (blankCellsAllRows.length > 0) {
                 setPendingAction("print-all");
               } else {
-                runPrintAll();
+                openPrintFlow("all");
               }
             }
           : null
@@ -548,11 +586,29 @@ function FillAndPreviewContent() {
         onConfirm={() => {
           if (pendingAction === "export-current") runExport();
           else if (pendingAction === "export-all") runExportAll();
-          else if (pendingAction === "print-current") runPrint();
-          else if (pendingAction === "print-all") runPrintAll();
+          else if (pendingAction === "print-current") openPrintFlow("current");
+          else if (pendingAction === "print-all") openPrintFlow("all");
           setPendingAction(null);
         }}
         onCancel={() => setPendingAction(null)}
+      />
+
+      <PrintDialog
+        open={printFlow !== null}
+        countLabel={
+          printFlow === "all"
+            ? `${rowCount} document${rowCount === 1 ? "" : "s"}`
+            : `${pageSlices.length} page${pageSlices.length === 1 ? "" : "s"}`
+        }
+        printers={printers}
+        loading={printersLoading}
+        printing={printing}
+        selectedPrinter={selectedPrinter}
+        onSelectPrinter={setSelectedPrinter}
+        copies={copies}
+        onCopiesChange={setCopies}
+        onConfirm={handleConfirmPrint}
+        onCancel={() => setPrintFlow(null)}
       />
     </div>
   );

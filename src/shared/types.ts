@@ -64,6 +64,18 @@ export interface Preset {
   snapshot: FillValuesSnapshot;
 }
 
+export interface ImportedDocxTemplate {
+  content: unknown;
+  pageLayout: PageLayout;
+  suggestedName: string;
+  skippedImageCount: number;
+}
+
+export interface PrinterInfo {
+  name: string;
+  displayName: string;
+}
+
 export interface BundleApi {
   saveTemplate: (
     template: Partial<Template>,
@@ -73,7 +85,12 @@ export interface BundleApi {
   loadTemplate: (id: string) => Promise<{ meta: Template; content: unknown }>;
   deleteTemplate: (id: string) => Promise<void>;
   exportDocument: (payload: ExportPayload) => Promise<ExportResult>;
-  printDocument: (pageLayout: PageLayout) => Promise<void>;
+  printDocument: (
+    pageLayout: PageLayout,
+    deviceName?: string,
+    copies?: number
+  ) => Promise<void>;
+  listPrinters: () => Promise<PrinterInfo[]>;
   chooseExportFolder: () => Promise<ChooseFolderResult>;
   saveFillValues: (
     templateId: string,
@@ -90,4 +107,5 @@ export interface BundleApi {
   deletePreset: (templateId: string, presetId: string) => Promise<void>;
   notifyReady: () => void;
   listSystemFonts: () => Promise<string[]>;
+  importDocxTemplate: () => Promise<ImportedDocxTemplate | null>;
 }
