@@ -109,7 +109,7 @@ function PlaceholderCard({
           <select
             value={placeholder.dateFormat ?? "long"}
             onChange={e => onDateFormatChange(e.target.value as DateFormatKey)}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-full focus:outline-none"
           >
             {Object.entries(DATE_FORMATS).map(([key, fmt]) => (
               <option key={key} value={key}>
@@ -158,7 +158,7 @@ function PlaceholderCard({
                 onChange={e =>
                   onStyleChange({ fontFamily: e.target.value || undefined })
                 }
-                className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full focus:outline-none"
+                className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-full focus:outline-none"
               >
                 <option value="">{FONT_OPTIONS[0]?.label}</option>
                 <optgroup label="Recommended">
@@ -187,7 +187,7 @@ function PlaceholderCard({
                       : undefined
                   })
                 }
-                className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-20 shrink-0 focus:outline-none"
+                className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-20 shrink-0 focus:outline-none"
               >
                 <option value="">Size</option>
                 {FONT_SIZE_OPTIONS.map(s => (

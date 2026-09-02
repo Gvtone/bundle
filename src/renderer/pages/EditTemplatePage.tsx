@@ -434,7 +434,7 @@ function EditTemplatePage() {
             value={editorState?.currentFont ?? ""}
             onMouseDown={captureSelection}
             onChange={handleFontChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-36 focus:outline-none"
             style={{ fontFamily: editorState?.currentFont || "inherit" }}
           >
             <option value="">{FONT_OPTIONS[0]?.label}</option>
@@ -474,7 +474,7 @@ function EditTemplatePage() {
             value={editorState?.currentSize?.replace("pt", "") ?? ""}
             onMouseDown={captureSelection}
             onChange={handleSizeChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-28 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-28 focus:outline-none"
           >
             <option value="">{DEFAULT_FONT_SIZE_PT}pt (Default)</option>
             {FONT_SIZE_OPTIONS.map(s => (
@@ -489,7 +489,7 @@ function EditTemplatePage() {
             value={editorState?.currentLineHeight ?? ""}
             onMouseDown={captureSelection}
             onChange={handleLineHeightChange}
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-32 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-32 focus:outline-none"
           >
             <option value="">{DEFAULT_LINE_HEIGHT} (Default)</option>
             {LINE_HEIGHT_OPTIONS.map(o => (
@@ -505,7 +505,7 @@ function EditTemplatePage() {
             onMouseDown={captureSelection}
             onChange={handleSpacingBeforeChange}
             title="Spacing before paragraph"
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-36 focus:outline-none"
           >
             <option value="">{DEFAULT_SPACING_BEFORE_PT}pt before (Default)</option>
             {SPACING_OPTIONS.map(o => (
@@ -521,7 +521,7 @@ function EditTemplatePage() {
             onMouseDown={captureSelection}
             onChange={handleSpacingAfterChange}
             title="Spacing after paragraph"
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-36 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-36 focus:outline-none"
           >
             <option value="">{DEFAULT_SPACING_AFTER_PT}pt after (Default)</option>
             {SPACING_OPTIONS.map(o => (
@@ -624,7 +624,7 @@ function EditTemplatePage() {
                 size: e.target.value as PageSizeKey
               }))
             }
-            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-24 focus:outline-none"
+            className="text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 w-24 focus:outline-none"
           >
             <option value="letter">Letter</option>
             <option value="a4">A4</option>
@@ -668,7 +668,7 @@ function EditTemplatePage() {
                 step="0.1"
                 min="4"
                 max="18"
-                className="w-16 text-sm bg-card-muted border border-border rounded-md px-2 py-1 focus:outline-none"
+                className="w-16 text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 focus:outline-none"
               />
               <span className="text-xs text-muted-foreground">×</span>
               <input
@@ -683,7 +683,7 @@ function EditTemplatePage() {
                 step="0.1"
                 min="4"
                 max="24"
-                className="w-16 text-sm bg-card-muted border border-border rounded-md px-2 py-1 focus:outline-none"
+                className="w-16 text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 focus:outline-none"
               />
               <span className="text-xs text-muted-foreground">in</span>
             </div>
@@ -704,7 +704,7 @@ function EditTemplatePage() {
               step="0.25"
               min="0"
               max="3"
-              className="w-16 text-sm bg-card-muted border border-border rounded-md px-2 py-1 focus:outline-none"
+              className="w-16 text-sm bg-card-muted border border-border rounded-md px-2 py-1 transition-all duration-200 focus:outline-none"
             />
             <span className="text-xs text-muted-foreground">in</span>
           </div>

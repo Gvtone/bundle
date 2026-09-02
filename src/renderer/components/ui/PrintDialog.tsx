@@ -61,7 +61,7 @@ function PrintDialog({
           <select
             value={selectedPrinter}
             onChange={e => onSelectPrinter(e.target.value)}
-            className="mt-1 text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full focus:outline-none"
+            className="mt-1 text-sm bg-card-muted border border-border rounded-md px-2 py-1 w-full transition-all duration-200 focus:outline-none"
           >
             {printers.map(p => (
               <option key={p.name} value={p.name}>
