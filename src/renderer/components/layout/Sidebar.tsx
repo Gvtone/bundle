@@ -1,8 +1,7 @@
 import {
   CaretLeftIcon,
   CaretRightIcon,
-  MagnifyingGlassIcon,
-  PlusIcon
+  MagnifyingGlassIcon
 } from "@phosphor-icons/react";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
@@ -13,7 +12,7 @@ import LinkButton from "../ui/LinkButton";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
 import { Template } from "@/shared/types";
 import { relativeTime } from "@/renderer/utils/relativeTime";
-import { useCreateTemplate } from "@/renderer/hooks/useCreateTemplate";
+import NewTemplateButton from "./NewTemplateButton";
 
 function Sidebar() {
   const { templateId } = useParams();
@@ -21,7 +20,6 @@ function Sidebar() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [debouncedTemplateSearch, setDebouncedTemplateSearch] = useState("");
   const { templates } = useTemplates();
-  const { createTemplate } = useCreateTemplate();
 
   useEffect(() => {
     const timer = setTimeout(
@@ -72,14 +70,7 @@ function Sidebar() {
         </h3>
 
         {/* New template button */}
-        <Button
-          fullWidth
-          className={!isSidebarOpen ? "size-10 p-0" : ""}
-          onClick={createTemplate}
-        >
-          <PlusIcon weight="bold" />
-          <span className={!isSidebarOpen ? "hidden" : ""}>New Template</span>
-        </Button>
+        <NewTemplateButton fullWidth collapsedLabel={!isSidebarOpen} />
 
         {/* Search field */}
         <div className={cn("relative flex-1", !isSidebarOpen && "hidden")}>

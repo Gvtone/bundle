@@ -67,5 +67,22 @@ export const BorderedTableCell = TableCell.extend({
       borderBottom: borderAttribute("borderBottom"),
       borderLeft: borderAttribute("borderLeft")
     };
+  },
+
+  // The base extension's parseHTML only matches <td> — this app never
+  // registers a separate TableHeader node (no header-row concept, by
+  // design), so a <th> (e.g. a Word table's header row, or a pasted HTML
+  // table) had no matching parse rule at all. Without one, ProseMirror's
+  // DOMParser doesn't drop the cell — it falls back to flowing the <th>'s
+  // content into whatever schema-valid container is nearest, silently
+  // merging what should have been N separate header cells into a single
+  // cell and corrupting the row's column count relative to the rest of the
+  // table. Found via the DOCX import work: a real Word table with a header
+  // row collapsed from 2 header cells into 1. Mapping <th> onto this same
+  // tableCell node (matching the base rule, minus its empty-cell-backfill
+  // special case) fixes both DOCX import and any other HTML source (paste)
+  // that produces <th>.
+  parseHTML() {
+    return [...(this.parent?.() ?? []), { tag: "th" }];
   }
 });

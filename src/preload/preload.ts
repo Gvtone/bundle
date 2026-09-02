@@ -8,8 +8,9 @@ const api: BundleApi = {
   loadTemplate: id => ipcRenderer.invoke("template:load", id),
   deleteTemplate: id => ipcRenderer.invoke("template:delete", id),
   exportDocument: payload => ipcRenderer.invoke("document:export", payload),
-  printDocument: pageLayout =>
-    ipcRenderer.invoke("document:print", pageLayout),
+  printDocument: (pageLayout, deviceName, copies) =>
+    ipcRenderer.invoke("document:print", pageLayout, deviceName, copies),
+  listPrinters: () => ipcRenderer.invoke("document:list-printers"),
   chooseExportFolder: () => ipcRenderer.invoke("document:choose-folder"),
   saveFillValues: (templateId, snapshot) =>
     ipcRenderer.invoke("values:save", templateId, snapshot),
@@ -22,7 +23,8 @@ const api: BundleApi = {
   deletePreset: (templateId, presetId) =>
     ipcRenderer.invoke("preset:delete", templateId, presetId),
   notifyReady: () => ipcRenderer.send("app:renderer-ready"),
-  listSystemFonts: () => ipcRenderer.invoke("fonts:list")
+  listSystemFonts: () => ipcRenderer.invoke("fonts:list"),
+  importDocxTemplate: () => ipcRenderer.invoke("template:import-docx")
 };
 
 contextBridge.exposeInMainWorld("bundle", api);

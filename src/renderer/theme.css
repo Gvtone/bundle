@@ -457,5 +457,13 @@
      underneath instead of white. */
   body {
     background: white !important;
+    /* body's text-foreground (via @apply in @layer base) flips with the
+       app's own light/dark theme — in dark mode --foreground is a light
+       cream color meant for a dark background. Printed on white paper
+       regardless of app theme, that reads as badly washed-out/faint text.
+       --paper-foreground is the same constant, theme-independent ink color
+       already used for table borders and the DOCX export — using it here
+       too keeps printed text and borders visually consistent. */
+    color: var(--paper-foreground) !important;
   }
 }

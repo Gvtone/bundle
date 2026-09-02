@@ -1,10 +1,7 @@
 import { FilePlusIcon } from "@phosphor-icons/react";
-import Button from "../components/ui/Button";
-import { useCreateTemplate } from "@/renderer/hooks/useCreateTemplate";
+import NewTemplateButton from "../components/layout/NewTemplateButton";
 
 function EmptyStatePage() {
-  const { createTemplate } = useCreateTemplate();
-
   return (
     <div className="flex flex-col w-full h-full items-center justify-center gap-4 text-center">
       <div className="size-12 rounded-lg bg-primary-soft flex items-center justify-center text-primary-soft-foreground">
@@ -16,10 +13,7 @@ function EmptyStatePage() {
           Create a new template or pick one from the sidebar to get started.
         </p>
       </div>
-      <Button size="sm" onClick={createTemplate}>
-        <FilePlusIcon weight="bold" />
-        New Template
-      </Button>
+      <NewTemplateButton />
     </div>
   );
 }
