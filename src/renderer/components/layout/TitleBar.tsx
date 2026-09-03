@@ -1,8 +1,9 @@
 import { useTheme } from "@/renderer/context/theme/useTheme";
-import { FileIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
+import { MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useLocation, useParams } from "react-router";
 import Button from "../ui/Button";
 import { useTemplates } from "@/renderer/context/TemplatesContext";
+import appIcon from "@/renderer/assets/icon.svg";
 
 function TitleBar() {
   const { isDark, toggleTheme } = useTheme();
@@ -20,9 +21,7 @@ function TitleBar() {
     >
       <div className="flex items-center justify-between mr-32 w-full">
         <div className="flex items-center gap-2">
-          <div className="size-4 rounded-sm bg-primary flex items-center justify-center text-paper">
-            <FileIcon size={10} weight="bold" />
-          </div>
+          <img src={appIcon} alt="" className="size-4 rounded-sm" />
           <span className="font-bold text-foreground text-sm">Bundle</span>
         </div>
 

@@ -1,13 +1,7 @@
 import { app, BrowserWindow, ipcMain, Menu } from "electron";
 import path from "node:path";
-import started from "electron-squirrel-startup";
 import { getWindowState, saveWindowState } from "./pref-store";
 import { registerIpcHandlers } from "./ipc-handlers";
-
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
-  app.quit();
-}
 
 // Self-contained branded loading indicator shown immediately on window
 // create, before Vite/React/the initial template-list IPC round trip
@@ -47,6 +41,10 @@ async function createWindow() {
     width,
     height,
     show: false,
+    // Only resolves in dev (npm start) — the packaged app's icon comes from
+    // packagerConfig.icon in forge.config.ts instead. Electron silently
+    // ignores a missing icon path, so this is harmless if unresolved.
+    icon: path.join(__dirname, "../../assets/icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js")
     },
@@ -110,7 +108,9 @@ async function createWindow() {
     ipcMain.removeListener("app:renderer-ready", onRendererReady);
   });
 
-  mainWindow.webContents.openDevTools();
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
   mainWindow.on("close", e => {
     e.preventDefault();
     saveWindowState(mainWindow).finally(() => mainWindow.destroy());

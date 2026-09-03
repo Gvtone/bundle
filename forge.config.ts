@@ -1,5 +1,5 @@
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import { MakerSquirrel } from "@electron-forge/maker-squirrel";
+import { MakerNsis } from "./build/MakerNsis";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerRpm } from "@electron-forge/maker-rpm";
@@ -9,11 +9,15 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true
+    asar: true,
+    // Extension resolved per-platform (.ico on win32, .icns on darwin) —
+    // only assets/icon.ico exists so far, matching the only maker actually
+    // configured to run on this Windows dev machine.
+    icon: "assets/icon"
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({}),
+    new MakerNsis(),
     new MakerZIP({}, ["darwin"]),
     new MakerRpm({}),
     new MakerDeb({})
